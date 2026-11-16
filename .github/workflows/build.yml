@@ -13,9 +13,10 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
-      - uses: android-actions/setup-android@v3
-      - name: Install NDK
-        run: sdkmanager "platforms;android-34" "build-tools;34.0.0" "ndk;26.1.10909125"
+      - name: Install Android SDK parts
+        run: |
+          yes | sdkmanager --licenses > /dev/null || true
+          sdkmanager "platforms;android-34" "build-tools;34.0.0" "ndk;26.1.10909125"
       - name: Fetch hev-socks5-tunnel
         run: git clone --recursive --depth 1 --branch 2.20.0 https://github.com/heiher/hev-socks5-tunnel app/src/main/jni/hev-socks5-tunnel
       - uses: gradle/actions/setup-gradle@v4
