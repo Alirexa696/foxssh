@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Fox SSH</string>
+    <string name="server">آدرس سرور</string>
+    <string name="ssh_port">پورت SSH</string>
+    <string name="username">نام کاربری</string>
+    <string name="password">رمز عبور</string>
+    <string name="udpgw_port">پورت badvpn (UDP)</string>
+    <string name="remember">ذخیرهٔ اطلاعات ورود</string>
+    <string name="connect">اتصال</string>
+    <string name="disconnect">قطع اتصال</string>
+    <string name="connecting">در حال اتصال…</string>
+    <string name="st_disconnected">قطع</string>
+    <string name="st_connecting">در حال اتصال…</string>
+    <string name="st_connected">متصل</string>
+    <string name="st_reconnecting">اتصال مجدد…</string>
+    <string name="show_banner">نمایش بنر سرور</string>
+    <string name="banner_title">پیام سرور</string>
+    <string name="ok">باشه</string>
+    <string name="bypass_rules">قوانین ایران و بایپس</string>
+    <string name="bypass_title">ترافیک مستقیم (بدون تونل)</string>
+    <string name="bypass_enable">ترافیک ایران مستقیم برود</string>
+    <string name="bypass_desc">مقصدهای ایران و موارد دستی از تونل رد نمی‌شوند و در ترافیک تونل حساب نمی‌شوند.</string>
+    <string name="update_list">به‌روزرسانی لیست ایران</string>
+    <string name="add">افزودن</string>
+    <string name="entry_hint">IP یا CIDR یا دامنه (مثلاً 5.200.0.0/16 یا example.ir)</string>
+    <string name="manual_entries">موارد دستی</string>
+    <string name="no_entries">موردی اضافه نشده</string>
+    <string name="traffic_tunnel">ترافیک تونل</string>
+    <string name="uptime">مدت اتصال</string>
+    <string name="notif_connecting">در حال اتصال…</string>
+    <string name="notif_connected">متصل است</string>
+    <string name="notif_reconnecting">در حال اتصال مجدد…</string>
+    <string name="err_vpn_permission">مجوز VPN داده نشد</string>
+    <string name="err_fields">آدرس سرور، نام کاربری و رمز را وارد کنید</string>
+</resources>
