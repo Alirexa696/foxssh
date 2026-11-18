@@ -29,6 +29,7 @@
         <activity android:name=".SettingsActivity" android:exported="false" />
         <activity android:name=".ProfileEditActivity" android:exported="false" />
         <activity android:name=".LogActivity" android:exported="false" />
+        <activity android:name=".ProfilesActivity" android:exported="false" />
 
         <service
             android:name=".VpnTunnelService"

@@ -16,6 +16,7 @@ public final class LogActivity extends Activity {
         super.onCreate(b);
         setContentView(R.layout.activity_log);
         log = findViewById(R.id.log);
+        Bar.setup(this, R.string.log_title, true, false);
         findViewById(R.id.refresh).setOnClickListener(v -> load());
         findViewById(R.id.copy).setOnClickListener(v -> {
             ClipboardManager cm = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);

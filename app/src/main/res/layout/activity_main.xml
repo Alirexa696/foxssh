@@ -1,66 +1,94 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent" android:layout_height="match_parent"
-    android:orientation="vertical" android:layoutDirection="rtl">
+    android:layoutDirection="rtl">
 
     <LinearLayout
-        android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:gravity="center_vertical" android:orientation="horizontal"
-        android:paddingStart="20dp" android:paddingEnd="12dp" android:paddingTop="16dp">
-        <ImageView
-            android:layout_width="44dp" android:layout_height="44dp"
-            android:src="@drawable/ic_logo" android:contentDescription="@null" />
-        <TextView
-            android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
-            android:layout_marginStart="10dp" android:text="@string/app_name"
-            android:textColor="@color/text" android:textSize="22sp" android:textStyle="bold" />
-        <Button android:id="@+id/settings"
-            android:layout_width="wrap_content" android:layout_height="44dp"
-            android:background="@drawable/btn_dark" android:text="⚙  تنظیمات"
-            android:textColor="@color/text" android:paddingStart="14dp" android:paddingEnd="14dp" />
-    </LinearLayout>
+        android:layout_width="match_parent" android:layout_height="match_parent"
+        android:orientation="vertical">
 
-    <ScrollView
-        android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1">
-        <LinearLayout
-            android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:orientation="vertical" android:padding="20dp">
+        <include layout="@layout/bar" />
 
+        <ScrollView android:layout_width="match_parent" android:layout_height="match_parent">
             <LinearLayout
                 android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:background="@drawable/card_bg" android:orientation="vertical" android:padding="18dp">
-                <TextView android:id="@+id/status"
+                android:orientation="vertical" android:padding="16dp">
+
+                <Button android:id="@+id/connect"
+                    android:layout_width="match_parent" android:layout_height="64dp"
+                    android:background="@drawable/btn_pill" android:stateListAnimator="@null"
+                    android:text="@string/connect" android:textColor="#FFFFFF"
+                    android:textSize="20sp" android:textStyle="bold" />
+
+                <LinearLayout android:id="@+id/profileSelect"
                     android:layout_width="match_parent" android:layout_height="wrap_content"
-                    android:gravity="center" android:textSize="22sp" android:textStyle="bold"
-                    android:textColor="@color/muted" />
-                <TextView android:id="@+id/stats"
-                    android:layout_width="match_parent" android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp" android:gravity="center"
+                    android:layout_marginTop="16dp" android:background="@drawable/card_bg"
+                    android:gravity="center_vertical" android:orientation="horizontal"
+                    android:padding="14dp">
+                    <ImageView android:layout_width="28dp" android:layout_height="28dp"
+                        android:src="@drawable/ic_cloud" android:contentDescription="@null" />
+                    <LinearLayout
+                        android:layout_width="0dp" android:layout_height="wrap_content"
+                        android:layout_weight="1" android:layout_marginStart="12dp"
+                        android:orientation="vertical">
+                        <TextView android:id="@+id/profName"
+                            android:layout_width="wrap_content" android:layout_height="wrap_content"
+                            android:textColor="@color/text" android:textSize="16sp" />
+                        <TextView android:id="@+id/profSub"
+                            android:layout_width="wrap_content" android:layout_height="wrap_content"
+                            android:textColor="@color/muted" android:textSize="12sp"
+                            android:textDirection="ltr" />
+                    </LinearLayout>
+                    <ImageView android:layout_width="24dp" android:layout_height="24dp"
+                        android:src="@drawable/ic_chevron" android:contentDescription="@null" />
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:layout_marginTop="18dp" android:text="@string/login_details"
                     android:textColor="@color/muted" android:textSize="13sp" />
-                <TextView android:id="@+id/error"
+                <EditText android:id="@+id/user" style="@style/Field" android:hint="@string/username"
+                    android:inputType="text" />
+                <FrameLayout android:layout_width="match_parent" android:layout_height="wrap_content">
+                    <EditText android:id="@+id/pass" style="@style/Field"
+                        android:hint="@string/password" android:inputType="textPassword"
+                        android:paddingEnd="48dp" />
+                    <ImageButton android:id="@+id/eye"
+                        android:layout_width="44dp" android:layout_height="44dp"
+                        android:layout_gravity="end|center_vertical" android:layout_marginTop="10dp"
+                        android:background="@null" android:src="@drawable/ic_eye"
+                        android:contentDescription="@null" />
+                </FrameLayout>
+
+                <LinearLayout
                     android:layout_width="match_parent" android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp" android:gravity="center"
-                    android:textColor="@color/bad" android:textSize="13sp" android:visibility="gone" />
+                    android:layout_marginTop="18dp" android:background="@drawable/card_bg"
+                    android:orientation="vertical" android:padding="16dp">
+                    <TextView android:id="@+id/status"
+                        android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:gravity="center" android:textSize="20sp" android:textStyle="bold"
+                        android:textColor="@color/muted" />
+                    <TextView android:id="@+id/stats"
+                        android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp" android:gravity="center"
+                        android:textColor="@color/muted" android:textSize="13sp" />
+                    <TextView android:id="@+id/error"
+                        android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp" android:gravity="center"
+                        android:textColor="@color/bad" android:textSize="13sp"
+                        android:visibility="gone" />
+                </LinearLayout>
+
+                <Button android:id="@+id/banner" style="@style/Btn" android:text="@string/show_banner"
+                    android:background="@drawable/btn_dark" android:visibility="gone" />
+                <View android:layout_width="match_parent" android:layout_height="80dp" />
             </LinearLayout>
+        </ScrollView>
+    </LinearLayout>
 
-            <Button android:id="@+id/banner" style="@style/Btn" android:text="@string/show_banner"
-                android:background="@drawable/btn_dark" android:visibility="gone" />
-
-            <TextView
-                android:layout_width="wrap_content" android:layout_height="wrap_content"
-                android:layout_marginTop="22dp" android:text="@string/profiles"
-                android:textColor="@color/text" android:textSize="16sp" android:textStyle="bold" />
-
-            <LinearLayout android:id="@+id/profiles"
-                android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:orientation="vertical" />
-
-            <Button android:id="@+id/addProfile" style="@style/Btn" android:text="@string/add_profile"
-                android:background="@drawable/btn_dark" />
-        </LinearLayout>
-    </ScrollView>
-
-    <Button android:id="@+id/connect" style="@style/Btn" android:text="@string/connect"
-        android:layout_marginStart="20dp" android:layout_marginEnd="20dp"
-        android:layout_marginBottom="20dp" android:layout_width="match_parent" />
-</LinearLayout>
+    <ImageButton android:id="@+id/fabLog"
+        android:layout_width="56dp" android:layout_height="56dp"
+        android:layout_gravity="bottom|end" android:layout_margin="20dp"
+        android:background="@drawable/fab_bg" android:elevation="6dp"
+        android:src="@drawable/ic_log" android:contentDescription="@string/view_log" />
+</FrameLayout>

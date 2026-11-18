@@ -4,7 +4,6 @@ import android.app.Activity;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.EditText;
-import android.widget.TextView;
 import android.widget.Toast;
 
 public final class ProfileEditActivity extends Activity {
@@ -26,9 +25,8 @@ public final class ProfileEditActivity extends Activity {
 
         String id = getIntent().getStringExtra("id");
         profile = id == null ? null : prefs.profile(id);
-        TextView title = findViewById(R.id.title);
         if (profile != null) {
-            title.setText(R.string.edit_profile);
+            Bar.setup(this, R.string.edit_profile, true, false);
             name.setText(profile.name);
             host.setText(profile.host);
             port.setText(String.valueOf(profile.port));
@@ -36,13 +34,13 @@ public final class ProfileEditActivity extends Activity {
             pass.setText(profile.pass);
             udpgw.setText(String.valueOf(profile.udpgw));
         } else {
-            title.setText(R.string.new_profile);
+            Bar.setup(this, R.string.new_profile, true, false);
             port.setText("22");
             udpgw.setText("7300");
             findViewById(R.id.delete).setVisibility(View.GONE);
         }
 
-        findViewById(R.id.save).setOnClickListener(v -> save());
+        Bar.action1(this, R.drawable.ic_check, this::save);
         findViewById(R.id.delete).setOnClickListener(v -> {
             if (profile != null) prefs.deleteProfile(profile.id);
             finish();

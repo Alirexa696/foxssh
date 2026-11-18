@@ -35,7 +35,8 @@ public final class SettingsActivity extends Activity {
             prefs.forgetAllHostKeys();
             Toast.makeText(this, R.string.keys_cleared, Toast.LENGTH_SHORT).show();
         });
-        findViewById(R.id.saveSettings).setOnClickListener(v -> save());
+        Bar.setup(this, R.string.settings, true, false);
+        Bar.action1(this, R.drawable.ic_check, this::save);
     }
 
     private void save() {

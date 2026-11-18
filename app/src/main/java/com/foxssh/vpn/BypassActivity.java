@@ -30,6 +30,7 @@ public final class BypassActivity extends Activity {
         super.onCreate(b);
         setContentView(R.layout.activity_bypass);
         prefs = new Prefs(this);
+        Bar.setup(this, R.string.bypass_title, true, false);
         listInfo = findViewById(R.id.listInfo);
         entries = findViewById(R.id.entries);
         entry = findViewById(R.id.entry);

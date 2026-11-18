@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="56dp"
+    android:background="@color/bar" android:gravity="center_vertical"
+    android:layoutDirection="rtl" android:orientation="horizontal"
+    android:paddingStart="4dp" android:paddingEnd="4dp" android:elevation="4dp">
+    <ImageButton android:id="@+id/barBack"
+        android:layout_width="48dp" android:layout_height="48dp"
+        android:background="@drawable/ripple_icon" android:src="@drawable/ic_back"
+        android:contentDescription="@null" android:visibility="gone" />
+    <ImageView android:id="@+id/barLogo"
+        android:layout_width="34dp" android:layout_height="34dp" android:layout_marginStart="12dp"
+        android:src="@drawable/ic_logo" android:contentDescription="@null" android:visibility="gone" />
+    <TextView android:id="@+id/barTitle"
+        android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+        android:layout_marginStart="12dp" android:textColor="@color/text"
+        android:textSize="19sp" android:textStyle="bold" />
+    <ImageButton android:id="@+id/barAction1"
+        android:layout_width="48dp" android:layout_height="48dp"
+        android:background="@drawable/ripple_icon" android:contentDescription="@null"
+        android:visibility="gone" />
+    <ImageButton android:id="@+id/barAction2"
+        android:layout_width="48dp" android:layout_height="48dp"
+        android:background="@drawable/ripple_icon" android:contentDescription="@null"
+        android:visibility="gone" />
+</LinearLayout>
