@@ -153,7 +153,8 @@ final class UdpAssociation implements UdpGwMux.Sink, Closeable {
                     try {
                         byte[] resp = DnsOverTcp.query(o, host, 53, payload, 8000);
                         deliver(ip, port, resp);
-                    } catch (IOException ignored) {
+                    } catch (IOException e) {
+                        CoreLog.log("DNS روی TCP ✗ " + e);
                     }
                 }
             });

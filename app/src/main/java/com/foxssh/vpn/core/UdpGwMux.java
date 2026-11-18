@@ -171,6 +171,7 @@ public final class UdpGwMux implements Closeable {
             }, 10, 10, TimeUnit.SECONDS);
             return true;
         } catch (IOException e) {
+            CoreLog.log("udpgw 127.0.0.1:" + udpgwPort + " روی سرور باز نشد ✗ " + e);
             retryAt = now + OPEN_RETRY_MS;
             return false;
         }

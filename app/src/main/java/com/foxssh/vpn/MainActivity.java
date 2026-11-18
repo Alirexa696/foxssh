@@ -7,22 +7,24 @@ import android.graphics.Color;
 import android.net.VpnService;
 import android.os.Build;
 import android.os.Bundle;
+import android.view.LayoutInflater;
+import android.view.View;
 import android.widget.Button;
-import android.widget.CheckBox;
-import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.util.List;
 import java.util.Locale;
 
+/** صفحهٔ خانه: انتخاب کانفیگ، اتصال و وضعیت. */
 public final class MainActivity extends Activity implements VpnState.Listener {
     private static final int REQ_VPN = 100;
 
     private Prefs prefs;
-    private EditText host, port, user, pass, udpgw;
-    private CheckBox remember;
     private TextView status, stats, error;
     private Button connect, banner;
+    private LinearLayout profilesBox;
     private AlertDialog bannerDialog;
 
     @Override
@@ -30,24 +32,12 @@ public final class MainActivity extends Activity implements VpnState.Listener {
         super.onCreate(b);
         setContentView(R.layout.activity_main);
         prefs = new Prefs(this);
-        host = findViewById(R.id.host);
-        port = findViewById(R.id.port);
-        user = findViewById(R.id.user);
-        pass = findViewById(R.id.pass);
-        udpgw = findViewById(R.id.udpgw);
-        remember = findViewById(R.id.remember);
         status = findViewById(R.id.status);
         stats = findViewById(R.id.stats);
         error = findViewById(R.id.error);
         connect = findViewById(R.id.connect);
         banner = findViewById(R.id.banner);
-
-        host.setText(prefs.host());
-        port.setText(String.valueOf(prefs.port()));
-        user.setText(prefs.user());
-        pass.setText(prefs.pass());
-        udpgw.setText(String.valueOf(prefs.udpgwPort()));
-        remember.setChecked(prefs.remember());
+        profilesBox = findViewById(R.id.profiles);
 
         connect.setOnClickListener(v -> {
             if (VpnState.active()) {
@@ -57,7 +47,14 @@ public final class MainActivity extends Activity implements VpnState.Listener {
             }
         });
         banner.setOnClickListener(v -> showBanner());
-        findViewById(R.id.rules).setOnClickListener(v -> startActivity(new Intent(this, BypassActivity.class)));
+        findViewById(R.id.settings).setOnClickListener(v -> startActivity(new Intent(this, SettingsActivity.class)));
+        findViewById(R.id.addProfile).setOnClickListener(v -> {
+            if (VpnState.active()) {
+                Toast.makeText(this, R.string.active_lock, Toast.LENGTH_SHORT).show();
+            } else {
+                startActivity(new Intent(this, ProfileEditActivity.class));
+            }
+        });
 
         if (Build.VERSION.SDK_INT >= 33) {
             requestPermissions(new String[]{"android.permission.POST_NOTIFICATIONS"}, 1);
@@ -76,6 +73,7 @@ public final class MainActivity extends Activity implements VpnState.Listener {
     protected void onResume() {
         super.onResume();
         VpnState.add(this);
+        renderProfiles();
         render();
     }
 
@@ -85,15 +83,48 @@ public final class MainActivity extends Activity implements VpnState.Listener {
         super.onPause();
     }
 
-    private void tryConnect() {
-        String h = host.getText().toString().trim();
-        String u = user.getText().toString().trim();
-        String p = pass.getText().toString();
-        if (h.isEmpty() || u.isEmpty() || p.isEmpty()) {
-            Toast.makeText(this, R.string.err_fields, Toast.LENGTH_SHORT).show();
+    private void renderProfiles() {
+        profilesBox.removeAllViews();
+        List<Profile> l = prefs.profiles();
+        if (l.isEmpty()) {
+            TextView t = new TextView(this);
+            t.setText(R.string.no_profiles);
+            t.setTextColor(getColor(R.color.muted));
+            t.setPadding(0, 14, 0, 0);
+            profilesBox.addView(t);
             return;
         }
-        prefs.saveLogin(h, toInt(port, 22), u, p, remember.isChecked(), toInt(udpgw, 7300));
+        Profile sel = prefs.selected();
+        for (final Profile p : l) {
+            View row = LayoutInflater.from(this).inflate(R.layout.item_profile, profilesBox, false);
+            boolean on = sel != null && sel.id.equals(p.id);
+            ((TextView) row.findViewById(R.id.dot)).setText(on ? "◉" : "○");
+            ((TextView) row.findViewById(R.id.title)).setText(p.title());
+            ((TextView) row.findViewById(R.id.sub)).setText(p.user + "@" + p.host + ":" + p.port);
+            row.setOnClickListener(v -> {
+                if (VpnState.active()) {
+                    Toast.makeText(this, R.string.active_lock, Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                prefs.setSelected(p.id);
+                renderProfiles();
+            });
+            row.findViewById(R.id.edit).setOnClickListener(v -> {
+                if (VpnState.active()) {
+                    Toast.makeText(this, R.string.active_lock, Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                startActivity(new Intent(this, ProfileEditActivity.class).putExtra("id", p.id));
+            });
+            profilesBox.addView(row);
+        }
+    }
+
+    private void tryConnect() {
+        if (prefs.selected() == null) {
+            Toast.makeText(this, R.string.select_first, Toast.LENGTH_SHORT).show();
+            return;
+        }
         Intent i = VpnService.prepare(this);
         if (i != null) {
             startActivityForResult(i, REQ_VPN);
@@ -112,8 +143,7 @@ public final class MainActivity extends Activity implements VpnState.Listener {
     }
 
     private void startVpn() {
-        Intent i = new Intent(this, VpnTunnelService.class).setAction(VpnTunnelService.ACTION_CONNECT);
-        startForegroundService(i);
+        startForegroundService(new Intent(this, VpnTunnelService.class).setAction(VpnTunnelService.ACTION_CONNECT));
     }
 
     @Override
@@ -131,7 +161,6 @@ public final class MainActivity extends Activity implements VpnState.Listener {
         status.setTextColor(s == VpnState.CONNECTED ? getColor(R.color.ok)
                 : active ? getColor(R.color.accent) : getColor(R.color.muted));
         connect.setText(active ? R.string.disconnect : R.string.connect);
-        for (EditText e : new EditText[]{host, port, user, pass, udpgw}) e.setEnabled(!active);
 
         String err = VpnState.error;
         error.setVisibility(!active && !err.isEmpty() ? TextView.VISIBLE : TextView.GONE);
@@ -176,15 +205,6 @@ public final class MainActivity extends Activity implements VpnState.Listener {
         if (s == null) return "";
         return s.replaceAll("\u001B\\[[0-9;]*[A-Za-z]", "").replace("\r", "")
                 .replaceAll("[\\x00-\\x08\\x0B\\x0C\\x0E-\\x1F]", "").trim();
-    }
-
-    private static int toInt(EditText e, int def) {
-        try {
-            int v = Integer.parseInt(e.getText().toString().trim());
-            return v >= 0 && v < 65536 ? v : def;
-        } catch (NumberFormatException ex) {
-            return def;
-        }
     }
 
     private static String fmt(long b) {

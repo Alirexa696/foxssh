@@ -16,7 +16,12 @@ import com.foxssh.vpn.core.ChannelOpener;
 import com.foxssh.vpn.core.Socks5Server;
 import com.foxssh.vpn.core.UdpGwMux;
 
+import java.io.DataInputStream;
 import java.io.File;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.InetSocketAddress;
+import java.net.Socket;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicLong;
@@ -81,40 +86,49 @@ public final class VpnTunnelService extends VpnService {
 
     private void runTunnel() {
         Prefs p = new Prefs(this);
+        AppLog.install();
+        AppLog.clear();
         VpnState.error = "";
         VpnState.banner = "";
         VpnState.bannerShown = false;
         VpnState.tx = VpnState.rx = 0;
         setStatus(VpnState.CONNECTING);
+        Profile pr = p.selected();
         try {
+            if (pr == null) throw new IOException(getString(R.string.err_no_profile));
+            AppLog.add("اتصال به " + pr.host + ":" + pr.port + " با کاربر " + pr.user);
             BypassRules r = new BypassRules();
             r.setEnabled(p.bypassEnabled());
             loadRules(r);
             rules = r;
+            AppLog.add("لیست ایران: " + r.iranCount() + " رنج، بایپس " + (p.bypassEnabled() ? "روشن" : "خاموش"));
 
             SshTunnel t = new SshTunnel(p, tx, rx);
-            t.connect(p.host(), p.port(), p.user(), p.pass());
+            t.connect(pr.host, pr.port, pr.user, pr.pass);
             tunnel = t;
             VpnState.banner = t.banner();
+            AppLog.add("SSH وصل شد؛ طول بنر: " + t.banner().length());
 
             OpenerSource src = () -> {
                 SshTunnel c = tunnel;
                 return c != null && c.isAlive() ? (ChannelOpener) c : null;
             };
-            mux = new UdpGwMux(src, p.udpgwPort(), 200);
+            mux = new UdpGwMux(src, pr.udpgw, 200);
             socks = new Socks5Server(src, r, mux);
             int port = socks.start();
+            AppLog.add("SOCKS محلی روی 127.0.0.1:" + port + "، udpgw=" + pr.udpgw);
 
             Builder b = new Builder()
                     .setSession(getString(R.string.app_name))
                     .setMtu(1500)
                     .addAddress("26.26.26.1", 30)
-                    .addAddress("da26:2626::1", 126)
                     .addRoute("0.0.0.0", 0)
-                    .addRoute("::", 0)
-                    .addDnsServer("1.1.1.1")
-                    .addDnsServer("8.8.8.8")
+                    .addDnsServer(p.dns1())
                     .setBlocking(false);
+            if (!p.dns2().isEmpty()) b.addDnsServer(p.dns2());
+            if (p.ipv6()) {
+                b.addAddress("da26:2626::1", 126).addRoute("::", 0);
+            }
             try {
                 b.addDisallowedApplication(getPackageName());
             } catch (Exception ignored) {
@@ -124,28 +138,64 @@ public final class VpnTunnelService extends VpnService {
 
             File cfg = new File(getFilesDir(), "hev.yml");
             try (FileOutputStream o = new FileOutputStream(cfg)) {
-                o.write(hevConfig(port).getBytes("UTF-8"));
+                o.write(hevConfig(port, p.ipv6()).getBytes("UTF-8"));
             }
             hev = new TProxyService();
             if (!hev.TProxyStartService(cfg.getAbsolutePath(), tun.getFd())) {
                 throw new IOException("tun2socks");
             }
+            AppLog.add("tun2socks شروع شد؛ DNS: " + p.dns1() + (p.dns2().isEmpty() ? "" : "، " + p.dns2())
+                    + "، IPv6 " + (p.ipv6() ? "روشن" : "خاموش"));
 
             VpnState.since = System.currentTimeMillis();
             setStatus(VpnState.CONNECTED);
             updateNotif(getString(R.string.notif_connected));
+            selfTest(port);
 
-            monitor(p);
+            monitor(p, pr);
         } catch (InterruptedException e) {
             // قطع توسط کاربر
         } catch (Exception e) {
-            VpnState.error = e.getMessage() == null ? e.toString() : e.getMessage();
+            String m = e.getMessage() == null ? e.toString() : e.getMessage();
+            if (m.contains("HostKey has been changed")) m = getString(R.string.err_hostkey);
+            VpnState.error = m;
+            AppLog.add("خطا: " + m);
         } finally {
             cleanup();
         }
     }
 
-    private void monitor(Prefs p) throws InterruptedException {
+    /** بررسی خودکار: آیا کانال عبوری از SSH به اینترنت باز می‌شود؟ نتیجه در لاگ. */
+    private void selfTest(final int socksPort) {
+        new Thread(() -> {
+            try (Socket s = new Socket()) {
+                s.connect(new InetSocketAddress("127.0.0.1", socksPort), 3000);
+                s.setSoTimeout(20000);
+                OutputStream o = s.getOutputStream();
+                DataInputStream in = new DataInputStream(s.getInputStream());
+                o.write(new byte[]{5, 1, 0});
+                byte[] g = new byte[2];
+                in.readFully(g);
+                o.write(new byte[]{5, 1, 0, 1, 1, 1, 1, 1, 0, 80});
+                byte[] r = new byte[10];
+                in.readFully(r);
+                if (r[1] != 0) {
+                    AppLog.add("تست تونل ✗ (کد SOCKS " + r[1] + ") — سرور کانال به اینترنت را نمی‌دهد؟ AllowTcpForwarding را بررسی کنید");
+                    return;
+                }
+                o.write("HEAD / HTTP/1.0\r\nHost: 1.1.1.1\r\n\r\n".getBytes("US-ASCII"));
+                o.flush();
+                StringBuilder line = new StringBuilder();
+                int c;
+                while ((c = in.read()) != -1 && c != '\n' && line.length() < 100) line.append((char) c);
+                AppLog.add("تست تونل ✓ پاسخ 1.1.1.1: " + line.toString().trim());
+            } catch (Exception e) {
+                AppLog.add("تست تونل ✗ " + e);
+            }
+        }, "fox-selftest").start();
+    }
+
+    private void monitor(Prefs p, Profile pr) throws InterruptedException {
         int backoff = 2;
         int tick = 0;
         while (running) {
@@ -153,6 +203,7 @@ public final class VpnTunnelService extends VpnService {
             VpnState.tx = tx.get();
             VpnState.rx = rx.get();
             tick++;
+            if (tick == 8 || tick == 40) logStats();
             if (tick % 600 == 0) {
                 BypassRules r = rules;
                 if (r != null) r.resolveDomains();
@@ -171,7 +222,7 @@ public final class VpnTunnelService extends VpnService {
             updateNotif(getString(R.string.notif_reconnecting));
             SshTunnel n = new SshTunnel(p, tx, rx);
             try {
-                n.connect(p.host(), p.port(), p.user(), p.pass());
+                n.connect(pr.host, pr.port, pr.user, pr.pass);
                 tunnel = n;
                 if (cur != null) cur.close();
                 if (!n.banner().isEmpty() && VpnState.banner.isEmpty()) VpnState.banner = n.banner();
@@ -183,6 +234,16 @@ public final class VpnTunnelService extends VpnService {
         }
     }
 
+    private void logStats() {
+        try {
+            long[] st = hev == null ? null : hev.TProxyGetStats();
+            if (st != null && st.length >= 4) {
+                AppLog.add("tun2socks: ارسال " + st[0] + " بسته/" + st[1] + "B ، دریافت " + st[2] + " بسته/" + st[3] + "B");
+            }
+        } catch (Throwable ignored) {
+        }
+    }
+
     private void loadRules(BypassRules r) {
         Prefs p = new Prefs(this);
         r.setEnabled(p.bypassEnabled());
@@ -191,8 +252,8 @@ public final class VpnTunnelService extends VpnService {
         r.resolveDomains();
     }
 
-    private String hevConfig(int socksPort) {
-        return "tunnel:\n  mtu: 1500\n  ipv4: 26.26.26.1\n  ipv6: 'da26:2626::1'\n"
+    private String hevConfig(int socksPort, boolean v6) {
+        return "tunnel:\n  mtu: 1500\n  ipv4: 26.26.26.1\n" + (v6 ? "  ipv6: 'da26:2626::1'\n" : "")
                 + "socks5:\n  port: " + socksPort + "\n  address: 127.0.0.1\n  udp: 'udp'\n"
                 + "misc:\n  task-stack-size: 81920\n  tcp-buffer-size: 65536\n  connect-timeout: 15000\n"
                 + "  tcp-read-write-timeout: 300000\n  udp-read-write-timeout: 60000\n  log-level: warn\n";

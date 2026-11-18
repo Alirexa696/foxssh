@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:padding="16dp">
+    <LinearLayout
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layoutDirection="rtl" android:orientation="horizontal">
+        <Button android:id="@+id/copy" style="@style/Btn"
+            android:layout_width="0dp" android:layout_weight="1" android:layout_marginTop="0dp"
+            android:text="@string/copy" />
+        <Button android:id="@+id/refresh" style="@style/Btn"
+            android:layout_width="0dp" android:layout_weight="1" android:layout_marginTop="0dp"
+            android:layout_marginStart="10dp" android:background="@drawable/btn_dark"
+            android:text="@string/refresh" />
+    </LinearLayout>
+    <ScrollView
+        android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"
+        android:layout_marginTop="12dp">
+        <TextView android:id="@+id/log"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:fontFamily="monospace" android:textColor="@color/text" android:textSize="12sp"
+            android:textIsSelectable="true" android:textDirection="anyRtl" />
+    </ScrollView>
+</LinearLayout>

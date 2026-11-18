@@ -5,10 +5,14 @@ import android.content.SharedPreferences;
 
 import com.foxssh.vpn.core.BypassRules;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
-/** تنظیمات ذخیره‌شدهٔ برنامه. */
+/** تنظیمات و پروفایل‌های ذخیره‌شده. */
 public final class Prefs {
     private final SharedPreferences sp;
 
@@ -16,28 +20,87 @@ public final class Prefs {
         sp = c.getApplicationContext().getSharedPreferences("fox", Context.MODE_PRIVATE);
     }
 
-    public String host() { return sp.getString("host", ""); }
-    public int port() { return sp.getInt("port", 22); }
-    public String user() { return sp.getString("user", ""); }
-    public String pass() { return sp.getString("pass", ""); }
-    public boolean remember() { return sp.getBoolean("remember", true); }
-    public int udpgwPort() { return sp.getInt("udpgw", 7300); }
-    public boolean bypassEnabled() { return sp.getBoolean("bypass", true); }
+    // ───── پروفایل‌ها ─────
 
-    public void saveLogin(String host, int port, String user, String pass, boolean remember, int udpgw) {
-        sp.edit().putString("host", host).putInt("port", port).putString("user", user)
-                .putString("pass", remember ? pass : "").putBoolean("remember", remember)
-                .putInt("udpgw", udpgw).apply();
+    public List<Profile> profiles() {
+        List<Profile> out = new ArrayList<>();
+        try {
+            JSONArray a = new JSONArray(sp.getString("profiles", "[]"));
+            for (int i = 0; i < a.length(); i++) out.add(Profile.fromJson(a.getJSONObject(i)));
+        } catch (JSONException ignored) {
+        }
+        return out;
     }
 
+    private void saveProfiles(List<Profile> l) {
+        JSONArray a = new JSONArray();
+        try {
+            for (Profile p : l) a.put(p.toJson());
+        } catch (JSONException ignored) {
+        }
+        sp.edit().putString("profiles", a.toString()).apply();
+    }
+
+    public Profile profile(String id) {
+        for (Profile p : profiles()) if (p.id.equals(id)) return p;
+        return null;
+    }
+
+    public void saveProfile(Profile p) {
+        List<Profile> l = profiles();
+        if (p.id.isEmpty()) {
+            p.id = UUID.randomUUID().toString();
+            l.add(p);
+        } else {
+            boolean found = false;
+            for (int i = 0; i < l.size(); i++) {
+                if (l.get(i).id.equals(p.id)) {
+                    l.set(i, p);
+                    found = true;
+                }
+            }
+            if (!found) l.add(p);
+        }
+        saveProfiles(l);
+        if (selectedId().isEmpty() || profile(selectedId()) == null) setSelected(p.id);
+    }
+
+    public void deleteProfile(String id) {
+        List<Profile> l = profiles();
+        for (int i = l.size() - 1; i >= 0; i--) if (l.get(i).id.equals(id)) l.remove(i);
+        saveProfiles(l);
+        if (selectedId().equals(id)) setSelected(l.isEmpty() ? "" : l.get(0).id);
+    }
+
+    public String selectedId() { return sp.getString("selected", ""); }
+    public void setSelected(String id) { sp.edit().putString("selected", id).apply(); }
+
+    public Profile selected() {
+        Profile p = profile(selectedId());
+        if (p == null) {
+            List<Profile> l = profiles();
+            if (!l.isEmpty()) p = l.get(0);
+        }
+        return p;
+    }
+
+    // ───── تنظیمات ─────
+
+    public boolean bypassEnabled() { return sp.getBoolean("bypass", true); }
     public void setBypassEnabled(boolean v) { sp.edit().putBoolean("bypass", v).apply(); }
+
+    public String dns1() { return sp.getString("dns1", "1.1.1.1"); }
+    public String dns2() { return sp.getString("dns2", "8.8.8.8"); }
+    public void setDns(String a, String b) { sp.edit().putString("dns1", a).putString("dns2", b).apply(); }
+
+    public boolean ipv6() { return sp.getBoolean("ipv6", false); }
+    public void setIpv6(boolean v) { sp.edit().putBoolean("ipv6", v).apply(); }
 
     // ───── ورودی‌های دستی (IP / CIDR / دامنه) ─────
 
     public List<String> manualEntries() {
         List<String> out = new ArrayList<>();
-        String s = sp.getString("manual", "");
-        for (String line : s.split("\n")) {
+        for (String line : sp.getString("manual", "").split("\n")) {
             if (!line.trim().isEmpty()) out.add(line.trim());
         }
         return out;
@@ -70,5 +133,10 @@ public final class Prefs {
 
     public String hostKey(String id) { return sp.getString("hk:" + id, null); }
     public void setHostKey(String id, String fp) { sp.edit().putString("hk:" + id, fp).apply(); }
-    public void forgetHostKey(String id) { sp.edit().remove("hk:" + id).apply(); }
+
+    public void forgetAllHostKeys() {
+        SharedPreferences.Editor e = sp.edit();
+        for (String k : sp.getAll().keySet()) if (k.startsWith("hk:")) e.remove(k);
+        e.apply();
+    }
 }

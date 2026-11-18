@@ -33,4 +33,33 @@
     <string name="notif_reconnecting">در حال اتصال مجدد…</string>
     <string name="err_vpn_permission">مجوز VPN داده نشد</string>
     <string name="err_fields">آدرس سرور، نام کاربری و رمز را وارد کنید</string>
+    <string name="err_no_profile">ابتدا یک کانفیگ اضافه کنید</string>
+    <string name="err_hostkey">کلید سرور تغییر کرده است. اگر سرور را دوباره نصب کرده‌اید: تنظیمات ← پاک‌کردن کلیدهای ذخیره‌شده، وگرنه ممکن است اتصال شما رهگیری شده باشد.</string>
+    <string name="profiles">کانفیگ‌ها</string>
+    <string name="add_profile">+ افزودن کانفیگ</string>
+    <string name="edit_profile">ویرایش کانفیگ</string>
+    <string name="new_profile">کانفیگ جدید</string>
+    <string name="profile_name">نام کانفیگ</string>
+    <string name="save">ذخیره</string>
+    <string name="delete">حذف</string>
+    <string name="no_profiles">هنوز کانفیگی اضافه نشده</string>
+    <string name="settings">تنظیمات</string>
+    <string name="dns_section">DNS</string>
+    <string name="dns1">DNS اول</string>
+    <string name="dns2">DNS دوم (اختیاری)</string>
+    <string name="dns_note">DNS از داخل تونل می‌رود. تغییر آن بعد از اتصال بعدی اعمال می‌شود.</string>
+    <string name="ipv6_switch">IPv6 داخل تونل (آزمایشی)</string>
+    <string name="ipv6_note">خاموش: IPv6 وارد تونل نمی‌شود. فقط اگر سرور شما IPv6 دارد روشن کنید.</string>
+    <string name="manage_bypass">مدیریت لیست ایران و موارد دستی</string>
+    <string name="view_log">مشاهدهٔ لاگ اتصال</string>
+    <string name="forget_keys">پاک‌کردن کلیدهای ذخیره‌شدهٔ سرورها</string>
+    <string name="keys_cleared">پاک شد</string>
+    <string name="log_title">لاگ اتصال</string>
+    <string name="copy">کپی</string>
+    <string name="refresh">تازه‌سازی</string>
+    <string name="copied">کپی شد</string>
+    <string name="udpgw_hint">پورت badvpn روی سرور (۰ = غیرفعال)</string>
+    <string name="saved">ذخیره شد</string>
+    <string name="select_first">اول یک کانفیگ انتخاب کنید</string>
+    <string name="active_lock">تا قطع نشده نمی‌شود تغییر داد</string>
 </resources>

@@ -170,6 +170,7 @@ public final class Socks5Server implements Closeable {
                 remote = o.open(host, port);
             }
         } catch (IOException e) {
+            CoreLog.log("CONNECT " + host + ":" + port + (direct ? " (مستقیم)" : " (تونل)") + " ✗ " + e);
             reply(cout, mapError(e));
             return;
         }
