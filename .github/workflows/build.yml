@@ -15,8 +15,11 @@ jobs:
           java-version: 17
       - name: Install Android SDK parts
         run: |
-          yes | sdkmanager --licenses > /dev/null || true
-          sdkmanager "platforms;android-34" "build-tools;34.0.0" "ndk;26.1.10909125"
+          SDK="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          SDKM="$(ls -d "$SDK"/cmdline-tools/*/bin/sdkmanager | head -1)"
+          echo "sdkmanager: $SDKM"
+          yes | "$SDKM" --licenses > /dev/null || true
+          "$SDKM" "platforms;android-34" "build-tools;34.0.0" "ndk;26.1.10909125"
       - name: Fetch hev-socks5-tunnel
         run: git clone --recursive --depth 1 --branch 2.20.0 https://github.com/heiher/hev-socks5-tunnel app/src/main/jni/hev-socks5-tunnel
       - uses: gradle/actions/setup-gradle@v4
