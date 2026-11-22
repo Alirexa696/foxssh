@@ -1,0 +1,3 @@
+#!/bin/sh
+exec /usr/bin/java -Xmx256m -Dawt.useSystemAAFontSettings=on -Dswing.aatext=true \
+  -cp /usr/lib/foxssh/foxssh.jar:/usr/lib/foxssh/lib/jsch.jar com.foxssh.desktop.Gui "$@"

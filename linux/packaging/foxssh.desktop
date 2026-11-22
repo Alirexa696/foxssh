@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Fox SSH
+Name[fa]=Fox SSH
+Comment=SSH tunnel VPN client
+Exec=foxssh
+Icon=foxssh
+Terminal=false
+Categories=Network;
+StartupWMClass=com-foxssh-desktop-Gui

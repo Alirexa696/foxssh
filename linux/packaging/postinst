@@ -1,0 +1,8 @@
+#!/bin/sh
+set -e
+if ! getent passwd foxssh >/dev/null; then
+  adduser --system --group --no-create-home --home /var/lib/foxssh --shell /usr/sbin/nologin foxssh >/dev/null
+fi
+install -d -m 755 -o foxssh -g foxssh /var/lib/foxssh
+systemctl daemon-reload >/dev/null 2>&1 || true
+exit 0

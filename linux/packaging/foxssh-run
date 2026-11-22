@@ -1,0 +1,79 @@
+#!/bin/bash
+# اجرا توسط foxssh.service (root): موتور SSH (کاربر foxssh) + tun2socks + مسیرها + DNS
+RUN=/run/foxssh
+LIB=/usr/lib/foxssh
+TUN=fox0
+TABLE=2027
+FUID=$(id -u foxssh)
+CFG="$RUN/config.properties"
+
+cfgval() { grep -m1 "^$1=" "$CFG" 2>/dev/null | cut -d= -f2-; }
+DNS1=$(cfgval dns1); DNS2=$(cfgval dns2)
+[ -z "$DNS1" ] && DNS1=1.1.1.1
+
+install -d -m 755 -o foxssh -g foxssh /var/lib/foxssh
+[ -f /var/lib/foxssh/known_hosts.properties ] || { : > /var/lib/foxssh/known_hosts.properties; chown foxssh:foxssh /var/lib/foxssh/known_hosts.properties; chmod 600 /var/lib/foxssh/known_hosts.properties; }
+
+# ۱) موتور SSH/SOCKS با کاربر محدود (ترافیک خودش از تونل رد نمی‌شود)
+runuser -u foxssh -- /usr/bin/java -Xmx128m -Duser.home=/var/lib/foxssh \
+    -cp "$LIB/foxssh.jar:$LIB/lib/jsch.jar" com.foxssh.desktop.Engine &
+EPID=$!
+
+# ۲) منتظر آماده‌شدن SOCKS
+PORT=""
+for _ in $(seq 1 300); do
+  kill -0 $EPID 2>/dev/null || { wait $EPID; exit 1; }
+  PORT=$(grep -m1 '^socksPort=' "$RUN/status.properties" 2>/dev/null | cut -d= -f2)
+  [ -n "$PORT" ] && [ "$PORT" != "0" ] && break
+  PORT=""
+  sleep 0.2
+done
+[ -z "$PORT" ] && { echo "SOCKS آماده نشد" >&2; kill $EPID 2>/dev/null; exit 1; }
+
+# ۳) tun2socks
+cat > "$RUN/hev.yml" <<YML
+tunnel:
+  name: $TUN
+  mtu: 1500
+  ipv4: 198.18.0.1
+socks5:
+  port: $PORT
+  address: 127.0.0.1
+  udp: 'udp'
+misc:
+  task-stack-size: 81920
+  tcp-buffer-size: 65536
+  connect-timeout: 15000
+  tcp-read-write-timeout: 300000
+  udp-read-write-timeout: 60000
+  log-level: warn
+YML
+"$LIB/hev-socks5-tunnel" "$RUN/hev.yml" &
+HPID=$!
+
+for _ in $(seq 1 50); do
+  ip link show "$TUN" >/dev/null 2>&1 && break
+  kill -0 $HPID 2>/dev/null || { echo "tun2socks اجرا نشد" >&2; kill $EPID 2>/dev/null; exit 1; }
+  sleep 0.1
+done
+ip link set "$TUN" up 2>/dev/null || true
+
+# ۴) مسیرها: همه‌چیز جز کاربر foxssh و شبکهٔ محلی → تونل
+#    (کاربر foxssh از مسیر اصلی می‌رود؛ با تغییر شبکه خودکار درست می‌ماند)
+ip -4 route replace default dev "$TUN" table $TABLE
+ip -4 rule add pref 85 lookup main suppress_prefixlength 0
+ip -4 rule add pref 90 not uidrange "$FUID-$FUID" lookup $TABLE
+
+# ۵) DNS از طریق تونل (systemd-resolved)
+if command -v resolvectl >/dev/null 2>&1; then
+  if [ -n "$DNS2" ]; then resolvectl dns "$TUN" "$DNS1" "$DNS2"; else resolvectl dns "$TUN" "$DNS1"; fi
+  resolvectl domain "$TUN" '~.'
+  resolvectl default-route "$TUN" yes 2>/dev/null || true
+fi
+
+touch "$RUN/vpn-up"
+chown foxssh:foxssh "$RUN/vpn-up"
+
+# تا وقتی هر دو زنده‌اند منتظر می‌مانیم؛ هرکدام مرد، سرویس تمام می‌شود (و پاک‌سازی انجام می‌شود)
+wait -n $EPID $HPID
+exit 1

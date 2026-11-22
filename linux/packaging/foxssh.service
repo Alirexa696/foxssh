@@ -1,0 +1,11 @@
+[Unit]
+Description=Fox SSH system tunnel
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/lib/foxssh/foxssh-run
+ExecStopPost=/usr/lib/foxssh/foxssh-down
+KillMode=control-group
+TimeoutStopSec=10
+Restart=no

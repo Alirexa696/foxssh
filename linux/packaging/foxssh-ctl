@@ -1,0 +1,32 @@
+#!/bin/bash
+# نقطهٔ ورود ممتاز (با pkexec از برنامهٔ گرافیکی صدا زده می‌شود).
+# فقط چند دستور ثابت را می‌پذیرد؛ کانفیگ از stdin خوانده می‌شود (نه از مسیر فایل کاربر).
+set -e
+RUN=/run/foxssh
+LIB=/usr/lib/foxssh
+case "$1" in
+  start)
+    install -d -m 755 -o foxssh -g foxssh "$RUN"
+    umask 077
+    head -c 65536 > "$RUN/config.properties"
+    chown foxssh:foxssh "$RUN/config.properties"
+    rm -f "$RUN/vpn-up" "$RUN/status.properties" "$RUN/engine.log"
+    systemctl reset-failed foxssh.service 2>/dev/null || true
+    systemctl restart foxssh.service
+    ;;
+  stop)
+    systemctl stop foxssh.service
+    ;;
+  update-list)
+    install -d -m 755 -o foxssh -g foxssh /var/lib/foxssh
+    out=$(runuser -u foxssh -- /usr/bin/java -Xmx64m -Duser.home=/var/lib/foxssh \
+          -cp "$LIB/foxssh.jar:$LIB/lib/jsch.jar" com.foxssh.desktop.Engine --update-list 2>&1) || { echo "$out"; exit 1; }
+    ;;
+  forget-keys)
+    rm -f /var/lib/foxssh/known_hosts.properties
+    ;;
+  *)
+    echo "usage: foxssh-ctl start|stop|update-list|forget-keys" >&2
+    exit 2
+    ;;
+esac

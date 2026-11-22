@@ -1,0 +1,11 @@
+Package: foxssh
+Version: @VERSION@
+Section: net
+Priority: optional
+Architecture: @ARCH@
+Depends: default-jre | java11-runtime, iproute2, policykit-1 | polkitd, systemd
+Recommends: systemd-resolved | libnss-resolve
+Maintainer: Fox SSH <noreply@example.com>
+Description: Fox SSH - system-wide SSH tunnel VPN client
+ SSH tunnel (password auth) with tun2socks, badvpn-udpgw UDP support,
+ server banner popup and an Iran IP bypass list (direct, uncounted traffic).

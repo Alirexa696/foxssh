@@ -1,0 +1,15 @@
+#!/bin/bash
+# ExecStopPost: پاک‌سازی مسیرها و DNS (حتی اگر سرویس با خطا تمام شده باشد)
+RUN=/run/foxssh
+TUN=fox0
+TABLE=2027
+ip -4 rule del pref 90 2>/dev/null
+ip -4 rule del pref 85 2>/dev/null
+ip -4 route flush table $TABLE 2>/dev/null
+command -v resolvectl >/dev/null 2>&1 && resolvectl revert "$TUN" 2>/dev/null
+ip link del "$TUN" 2>/dev/null
+rm -f "$RUN/config.properties" "$RUN/vpn-up" "$RUN/hev.yml"
+if [ -f "$RUN/status.properties" ] && ! grep -q '^state=stopped' "$RUN/status.properties"; then
+  sed -i 's/^state=.*/state=stopped/' "$RUN/status.properties"
+fi
+exit 0
