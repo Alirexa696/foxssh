@@ -1,6 +1,7 @@
 package com.foxssh.desktop;
 
 import javax.swing.BorderFactory;
+import javax.swing.JButton;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.DefaultListModel;
@@ -155,26 +156,85 @@ public final class Gui {
 
     private static final Color LINE = new Color(0x2B3A5C);
 
+    private JButton windowControl(String text) {
+        JButton b = new JButton(text);
+        b.setFont(Ui.latinBold(17f));
+        b.setForeground(Ui.MUTED);
+        b.setBackground(new Color(0x15233D));
+        b.setBorder(BorderFactory.createEmptyBorder(1, 8, 2, 8));
+        b.setFocusPainted(false);
+        b.setContentAreaFilled(false);
+        b.setOpaque(false);
+        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        b.setPreferredSize(new Dimension(28, 28));
+        return b;
+    }
+
     JPanel buildMain() {
         JPanel root = new JPanel(new BorderLayout());
         root.setBackground(Ui.BG);
 
-        // ── نوار بالا: همبرگری + «Fox VPN» + لوگو
-        JPanel bar = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
-        bar.setBackground(Ui.BAR);
+        // ── نوار اختصاصی برنامه؛ بدون نوار عنوان سیستم‌عامل
+        JPanel bar = new JPanel(new BorderLayout());
+        bar.setBackground(new Color(0x0D172B));
         bar.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createMatteBorder(0, 0, 1, 0, LINE), BorderFactory.createEmptyBorder(6, 8, 6, 8)));
-        Ui.Hamburger burger = new Ui.Hamburger();
-        burger.addActionListener(e -> showMenu(burger));
-        bar.add(burger);
-        bar.add(Box.createHorizontalStrut(10));
-        JLabel brand = Ui.label("Fox VPN", Ui.TEXT, 22f, Font.BOLD);
-        brand.setFont(Ui.latinBold(22f));
-        bar.add(brand);
+                BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(0x203B63)),
+                BorderFactory.createEmptyBorder(5, 10, 5, 10)));
+        bar.setPreferredSize(new Dimension(470, 58));
+
+        // کنترل‌های پنجره در سمت چپ
+        JPanel windowControls = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+        windowControls.setOpaque(false);
+        JButton minimize = windowControl("—");
+        minimize.addActionListener(e -> frame.setState(JFrame.ICONIFIED));
+        JButton close = windowControl("×");
+        close.setForeground(new Color(0xFF7885));
+        close.addActionListener(e -> frame.dispose());
+        windowControls.add(minimize);
+        windowControls.add(close);
+        bar.add(windowControls, BorderLayout.WEST);
+
+        // لوگو و نام تجاری دقیقاً در مرکز
+        JPanel brand = new JPanel(new FlowLayout(FlowLayout.CENTER, 7, 0));
+        brand.setOpaque(false);
         URL logo = Gui.class.getResource("/logo.png");
         if (logo != null) {
-            bar.add(new JLabel(new ImageIcon(new ImageIcon(logo).getImage().getScaledInstance(40, 40, Image.SCALE_SMOOTH))));
+            Image img = new ImageIcon(logo).getImage().getScaledInstance(34, 34, Image.SCALE_SMOOTH);
+            brand.add(new JLabel(new ImageIcon(img)));
         }
+        JLabel fox = Ui.label("Fox", Ui.TEXT, 23f, Font.BOLD);
+        fox.setFont(Ui.latinBold(23f));
+        JLabel vpn = Ui.label("VPN", new Color(0x22B8FF), 23f, Font.BOLD);
+        vpn.setFont(Ui.latinBold(23f));
+        brand.add(fox);
+        brand.add(vpn);
+        bar.add(brand, BorderLayout.CENTER);
+
+        // منوی همبرگری در گوشهٔ بالا سمت راست
+        JPanel menuSide = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+        menuSide.setOpaque(false);
+        Ui.Hamburger burger = new Ui.Hamburger();
+        burger.addActionListener(e -> showMenu(burger));
+        menuSide.add(burger);
+        bar.add(menuSide, BorderLayout.EAST);
+
+        // امکان جابه‌جایی پنجره با گرفتن نوار بالایی
+        java.awt.event.MouseAdapter dragWindow = new java.awt.event.MouseAdapter() {
+            private java.awt.Point offset;
+            @Override public void mousePressed(java.awt.event.MouseEvent e) {
+                offset = e.getLocationOnScreen();
+            }
+            @Override public void mouseDragged(java.awt.event.MouseEvent e) {
+                if (offset == null || frame == null) return;
+                java.awt.Point now = e.getLocationOnScreen();
+                frame.setLocation(frame.getX() + now.x - offset.x, frame.getY() + now.y - offset.y);
+                offset = now;
+            }
+        };
+        bar.addMouseListener(dragWindow);
+        bar.addMouseMotionListener(dragWindow);
+        brand.addMouseListener(dragWindow);
+        brand.addMouseMotionListener(dragWindow);
         root.add(bar, BorderLayout.NORTH);
 
         // ── بدنه
@@ -230,7 +290,7 @@ public final class Gui {
         mid.add(col, gc);
 
         power = new Ui.PowerButton();
-        power.setPreferredSize(new Dimension(164, 164));
+        power.setPreferredSize(new Dimension(126, 126));
         power.addActionListener(e -> onPower());
         JPanel pw = new JPanel(new java.awt.GridBagLayout());
         pw.setOpaque(false);
@@ -305,6 +365,7 @@ public final class Gui {
     void show() {
         applyTheme();
         frame = new JFrame("Fox VPN");
+        frame.setUndecorated(true);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         URL logo = Gui.class.getResource("/logo.png");
         if (logo != null) frame.setIconImage(new ImageIcon(logo).getImage());

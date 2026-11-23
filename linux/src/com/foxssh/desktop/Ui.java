@@ -50,7 +50,7 @@ final class Ui {
             if (bold == null) bold = regular.deriveFont(Font.BOLD);
             if (medium == null) medium = regular;
         }
-        Font base = (style & Font.BOLD) != 0 ? bold : regular;
+        Font base = (style & Font.BOLD) != 0 ? bold : medium;
         return base.deriveFont(size);
     }
 
@@ -68,7 +68,7 @@ final class Ui {
             pSemi = loadLatin("SemiBold", pRegular);
             pBold = loadLatin("Bold", pSemi);
         }
-        return ((style & Font.BOLD) != 0 ? pSemi : pRegular).deriveFont(size);
+        return ((style & Font.BOLD) != 0 ? pBold : pMedium).deriveFont(size);
     }
 
     static Font latinBold(float size) {
@@ -85,7 +85,7 @@ final class Ui {
         return false;
     }
 
-    /** برای متن فارسی وزیرمتن، برای بقیه Poppins. */
+    /** تایپوگرافی رابط: Vazirmatn Medium برای فارسی و Poppins Medium برای لاتین. */
     static Font pick(String text, float size, int style) {
         return hasArabic(text) ? font(size, style) : latin(size, style);
     }
