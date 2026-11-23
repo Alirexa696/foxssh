@@ -60,6 +60,7 @@ public final class Gui {
     private static final String CTL = "/usr/lib/foxssh/foxssh-ctl";
     private static final Path RUN = Paths.get("/run/foxssh");
     private static final int LOG_H = 200;
+    private static final int WIN_W = 600, WIN_H = 480;
 
     // نقاط تزریق برای تست ظاهر (در حالت عادی دست نمی‌خورند)
     static BooleanSupplier activeFn = Gui::systemctlActive;
@@ -81,9 +82,10 @@ public final class Gui {
 
     private JFrame frame;
     private Ui.PowerButton power;
-    private Ui.Pill proto;
-    private Ui.Shield shield;
-    private JLabel status, stats, profileName, ipLabel, ipValue, error;
+    private Ui.PortPill proto;
+    private Ui.CheckBadge badge;
+    private Ui.GlowLine glowLine;
+    private JLabel status, stats, profileName, ipLabel, ipValue, country, error;
     private Ui.Chevron logArrow;
     private JTextArea logArea;
     private JScrollPane logScroll;
@@ -156,69 +158,83 @@ public final class Gui {
 
     private static final Color LINE = new Color(0x2B3A5C);
 
-    private JButton windowControl(String text) {
-        JButton b = new JButton(text);
-        b.setFont(Ui.latinBold(17f));
-        b.setForeground(Ui.MUTED);
-        b.setBackground(new Color(0x15233D));
-        b.setBorder(BorderFactory.createEmptyBorder(1, 8, 2, 8));
-        b.setFocusPainted(false);
-        b.setContentAreaFilled(false);
-        b.setOpaque(false);
-        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        b.setPreferredSize(new Dimension(28, 28));
-        return b;
+    /** ریشهٔ پنجره: پس‌زمینهٔ گرادیانی با گوشه‌های گرد و لبهٔ آبی درخشان. */
+    private static final class RootPanel extends JPanel {
+        static final int ARC = 34;
+
+        RootPanel() {
+            super(new BorderLayout());
+            setOpaque(false);
+        }
+
+        @Override
+        protected void paintComponent(java.awt.Graphics g) {
+            java.awt.Graphics2D g2 = (java.awt.Graphics2D) g.create();
+            Ui.antialias(g2);
+            g2.setPaint(new java.awt.GradientPaint(0, 0, new Color(0x0A1634), 0, getHeight(), new Color(0x050B1B)));
+            g2.fillRoundRect(0, 0, getWidth(), getHeight(), ARC, ARC);
+            g2.dispose();
+        }
+
+        @Override
+        public void paint(java.awt.Graphics g) {
+            int w = getWidth(), h = getHeight();
+            java.awt.Graphics2D g2 = (java.awt.Graphics2D) g.create();
+            Ui.antialias(g2);
+            g2.clip(new java.awt.geom.RoundRectangle2D.Float(0, 0, w, h, ARC, ARC));
+            super.paint(g2);
+            g2.dispose();
+            java.awt.Graphics2D b = (java.awt.Graphics2D) g.create();
+            Ui.antialias(b);
+            b.setColor(Ui.alpha(Ui.GLOW, 60));
+            b.setStroke(new java.awt.BasicStroke(5f));
+            b.draw(new java.awt.geom.RoundRectangle2D.Float(2.5f, 2.5f, w - 5, h - 5, ARC - 3, ARC - 3));
+            b.setPaint(new java.awt.GradientPaint(0, 0, new Color(0x3C93FF), 0, h, new Color(0x1F5FD0)));
+            b.setStroke(new java.awt.BasicStroke(2f));
+            b.draw(new java.awt.geom.RoundRectangle2D.Float(1, 1, w - 2, h - 2, ARC - 1, ARC - 1));
+            b.dispose();
+        }
+    }
+
+    private static JPanel transparent(java.awt.LayoutManager lm) {
+        JPanel p = new JPanel(lm);
+        p.setOpaque(false);
+        return p;
     }
 
     JPanel buildMain() {
-        JPanel root = new JPanel(new BorderLayout());
-        root.setBackground(Ui.BG);
+        JPanel root = new RootPanel();
 
-        // ── نوار اختصاصی برنامه؛ بدون نوار عنوان سیستم‌عامل
-        JPanel bar = new JPanel(new BorderLayout());
-        bar.setBackground(new Color(0x0D172B));
-        bar.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(0x203B63)),
-                BorderFactory.createEmptyBorder(5, 10, 5, 10)));
-        bar.setPreferredSize(new Dimension(470, 58));
-
-        // کنترل‌های پنجره در سمت چپ
-        JPanel windowControls = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
-        windowControls.setOpaque(false);
-        JButton minimize = windowControl("—");
-        minimize.addActionListener(e -> frame.setState(JFrame.ICONIFIED));
-        JButton close = windowControl("×");
-        close.setForeground(new Color(0xFF7885));
-        close.addActionListener(e -> frame.dispose());
-        windowControls.add(minimize);
-        windowControls.add(close);
-        bar.add(windowControls, BorderLayout.WEST);
-
-        // لوگو و نام تجاری دقیقاً در مرکز
-        JPanel brand = new JPanel(new FlowLayout(FlowLayout.CENTER, 7, 0));
-        brand.setOpaque(false);
+        // ── هدر: لوگو و نام وسط، کنترل پنجره بالا-راست، همبرگر زیر آن
+        JPanel brand = transparent(new FlowLayout(FlowLayout.CENTER, 8, 0));
         URL logo = Gui.class.getResource("/logo.png");
         if (logo != null) {
-            Image img = new ImageIcon(logo).getImage().getScaledInstance(34, 34, Image.SCALE_SMOOTH);
+            Image img = new ImageIcon(logo).getImage().getScaledInstance(46, 46, Image.SCALE_SMOOTH);
             brand.add(new JLabel(new ImageIcon(img)));
         }
-        JLabel fox = Ui.label("Fox", Ui.TEXT, 23f, Font.BOLD);
-        fox.setFont(Ui.latinBold(23f));
-        JLabel vpn = Ui.label("VPN", new Color(0x22B8FF), 23f, Font.BOLD);
-        vpn.setFont(Ui.latinBold(23f));
+        JLabel fox = Ui.label("Fox", Ui.TEXT, 30f, Font.BOLD);
+        fox.setFont(Ui.italic(Ui.latinBold(30f)));
+        JLabel vpn = Ui.label("VPN", new Color(0x2E9BFF), 30f, Font.BOLD);
+        vpn.setFont(Ui.italic(Ui.latinBold(30f)));
         brand.add(fox);
         brand.add(vpn);
-        bar.add(brand, BorderLayout.CENTER);
 
-        // منوی همبرگری در گوشهٔ بالا سمت راست
-        JPanel menuSide = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
-        menuSide.setOpaque(false);
+        JPanel controls = transparent(new FlowLayout(FlowLayout.CENTER, 0, 0));
+        Ui.WinGlyph minimize = new Ui.WinGlyph(Ui.WinGlyph.MIN);
+        minimize.addActionListener(e -> frame.setState(JFrame.ICONIFIED));
+        Ui.WinGlyph close = new Ui.WinGlyph(Ui.WinGlyph.CLOSE);
+        close.addActionListener(e -> frame.dispose());
+        controls.add(minimize);
+        controls.add(new Ui.VDivider(18));
+        controls.add(close);
+        controls.setPreferredSize(new Dimension(72, 28));
+
         Ui.Hamburger burger = new Ui.Hamburger();
         burger.addActionListener(e -> showMenu(burger));
-        menuSide.add(burger);
-        bar.add(menuSide, BorderLayout.EAST);
+        Ui.Header bar = new Ui.Header(brand, controls, burger);
+        bar.setPreferredSize(new Dimension(600, 76));
 
-        // امکان جابه‌جایی پنجره با گرفتن نوار بالایی
+        // امکان جابه‌جایی پنجره با گرفتن هدر یا پس‌زمینه
         java.awt.event.MouseAdapter dragWindow = new java.awt.event.MouseAdapter() {
             private java.awt.Point offset;
             @Override public void mousePressed(java.awt.event.MouseEvent e) {
@@ -231,117 +247,144 @@ public final class Gui {
                 offset = now;
             }
         };
-        bar.addMouseListener(dragWindow);
-        bar.addMouseMotionListener(dragWindow);
-        brand.addMouseListener(dragWindow);
-        brand.addMouseMotionListener(dragWindow);
+        for (JComponent c : new JComponent[]{bar, brand}) {
+            c.addMouseListener(dragWindow);
+            c.addMouseMotionListener(dragWindow);
+        }
         root.add(bar, BorderLayout.NORTH);
 
         // ── بدنه
-        JPanel body = new MapPanel();
-        body.setBorder(BorderFactory.createEmptyBorder(14, 22, 12, 22));
+        MapPanel body = new MapPanel();
+        body.addMouseListener(dragWindow);
+        body.addMouseMotionListener(dragWindow);
 
-        // ردیف پروتکل
-        JPanel top = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 0));
-        top.setOpaque(false);
-        proto = new Ui.Pill("SSH  |  22");
-        shield = new Ui.Shield();
-        top.add(proto);
-        top.add(shield);
-        body.add(top, BorderLayout.NORTH);
+        proto = new Ui.PortPill();
 
-        // وسط: متن‌ها (چپ) + پاور (راست)
-        JPanel mid = new JPanel(new java.awt.GridBagLayout());
-        mid.setOpaque(false);
-        JPanel col = new JPanel();
-        col.setOpaque(false);
+        JPanel col = transparent(null);
         col.setLayout(new BoxLayout(col, BoxLayout.Y_AXIS));
-        status = Ui.label(L.t("disconnected"), Ui.MUTED, 26f, Font.BOLD);
-        stats = Ui.label(" ", Ui.MUTED, 12f, Font.PLAIN);
-        stats.setFont(Ui.font(12f, Font.PLAIN));
-        ipLabel = Ui.label(L.t("your_ip"), Ui.MUTED, 13f, Font.PLAIN);
-        ipValue = Ui.label("…", Ui.TEXT, 24f, Font.BOLD);
-        JSeparator sep = new JSeparator();
-        sep.setForeground(LINE);
-        sep.setBackground(LINE);
-        sep.setMaximumSize(new Dimension(230, 2));
-        sep.setAlignmentX(JComponent.LEFT_ALIGNMENT);
-        for (JComponent c : new JComponent[]{status, stats, ipLabel, ipValue}) c.setAlignmentX(JComponent.LEFT_ALIGNMENT);
-        col.add(Box.createVerticalGlue());
-        col.add(status);
-        col.add(Box.createVerticalStrut(2));
-        col.add(stats);
-        col.add(Box.createVerticalStrut(12));
-        col.add(sep);
-        col.add(Box.createVerticalStrut(12));
-        col.add(ipLabel);
-        flag = new JLabel();
-        JPanel ipRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
-        ipRow.setOpaque(false);
-        flag.setBorder(BorderFactory.createEmptyBorder(0, 10, 0, 0));
-        ipRow.setAlignmentX(JComponent.LEFT_ALIGNMENT);
-        ipRow.add(ipValue);
-        ipRow.add(flag);
-        ipRow.setMaximumSize(new Dimension(300, 40));
-        col.add(ipRow);
-        col.add(Box.createVerticalGlue());
-        java.awt.GridBagConstraints gc = new java.awt.GridBagConstraints();
-        gc.gridx = 0; gc.weightx = 1; gc.fill = java.awt.GridBagConstraints.BOTH;
-        mid.add(col, gc);
 
         power = new Ui.PowerButton();
-        power.setPreferredSize(new Dimension(126, 126));
+        power.setPreferredSize(new Dimension(144, 144));
+        power.setMaximumSize(new Dimension(144, 144));
+        power.setAlignmentX(JComponent.CENTER_ALIGNMENT);
         power.addActionListener(e -> onPower());
-        JPanel pw = new JPanel(new java.awt.GridBagLayout());
-        pw.setOpaque(false);
-        pw.add(power);
-        java.awt.GridBagConstraints gp = new java.awt.GridBagConstraints();
-        gp.gridx = 1; gp.weightx = 0; gp.insets = new java.awt.Insets(0, 8, 0, 0);
-        mid.add(pw, gp);
-        body.add(mid, BorderLayout.CENTER);
+        col.add(power);
 
-        // پایین: کارت پروفایل (کوچک) + خطا
-        JPanel south = new JPanel();
-        south.setOpaque(false);
-        south.setLayout(new BoxLayout(south, BoxLayout.Y_AXIS));
-        Ui.Card profileCard = new Ui.Card();
-        profileCard.setBorder(BorderFactory.createEmptyBorder(0, 14, 0, 10));
-        profileCard.setLayout(new BorderLayout(8, 0));
-        profileName = Ui.label("—", Ui.TEXT, 14f, Font.PLAIN);
+        JPanel statusRow = transparent(new FlowLayout(FlowLayout.CENTER, 10, 0));
+        status = Ui.label(L.t("disconnected"), Ui.MUTED, 27f, Font.BOLD);
+        badge = new Ui.CheckBadge();
+        badge.setVisible(false);
+        statusRow.add(status);
+        statusRow.add(badge);
+        statusRow.setAlignmentX(JComponent.CENTER_ALIGNMENT);
+        col.add(statusRow);
+
+        glowLine = new Ui.GlowLine();
+        glowLine.setMaximumSize(new Dimension(380, 8));
+        glowLine.setAlignmentX(JComponent.CENTER_ALIGNMENT);
+        col.add(glowLine);
+
+        stats = Ui.label(" ", Ui.SOFT, 12f, Font.PLAIN);
+        stats.setFont(new Font("SansSerif", Font.PLAIN, 12)); // فلش‌های ↑↓ در فونت‌های برنامه نیست
+        stats.setAlignmentX(JComponent.CENTER_ALIGNMENT);
+        col.add(Box.createVerticalStrut(2));
+        col.add(stats);
+        col.add(Box.createVerticalStrut(6));
+
+        // کارت IP: مانیتور + آی‌پی | پرچم + کشور
+        Ui.GlowCard ipCard = new Ui.GlowCard(26);
+        ipCard.setLayout(new java.awt.GridBagLayout());
+        JPanel left = transparent(new FlowLayout(FlowLayout.CENTER, 12, 0));
+        left.add(new Ui.Icon(Ui.Icon.MONITOR, Ui.SOFT, 36, 34));
+        JPanel texts = transparent(null);
+        texts.setLayout(new BoxLayout(texts, BoxLayout.Y_AXIS));
+        ipLabel = Ui.label(L.t("your_ip"), Ui.SOFT, 12f, Font.PLAIN);
+        ipValue = Ui.label("…", Ui.TEXT, 19f, Font.BOLD);
+        ipLabel.setAlignmentX(JComponent.LEFT_ALIGNMENT);
+        ipValue.setAlignmentX(JComponent.LEFT_ALIGNMENT);
+        texts.add(ipLabel);
+        texts.add(ipValue);
+        left.add(texts);
+        flag = new JLabel();
+        country = Ui.label(" ", Ui.TEXT, 16f, Font.PLAIN);
+        JPanel right = transparent(new FlowLayout(FlowLayout.CENTER, 10, 0));
+        right.add(flag);
+        right.add(country);
+        java.awt.GridBagConstraints g0 = new java.awt.GridBagConstraints();
+        g0.gridx = 0; g0.weightx = 0.62; g0.fill = java.awt.GridBagConstraints.NONE;
+        ipCard.add(left, g0);
+        java.awt.GridBagConstraints g1 = new java.awt.GridBagConstraints();
+        g1.gridx = 1; g1.weightx = 0; g1.fill = java.awt.GridBagConstraints.VERTICAL; g1.insets = new java.awt.Insets(11, 0, 11, 0);
+        ipCard.add(new Ui.VDivider(30), g1);
+        java.awt.GridBagConstraints g2c = new java.awt.GridBagConstraints();
+        g2c.gridx = 2; g2c.weightx = 0.38; g2c.fill = java.awt.GridBagConstraints.NONE;
+        ipCard.add(right, g2c);
+        ipCard.setPreferredSize(new Dimension(410, 62));
+        ipCard.setMaximumSize(new Dimension(410, 62));
+        ipCard.setAlignmentX(JComponent.CENTER_ALIGNMENT);
+        col.add(ipCard);
+        col.add(Box.createVerticalStrut(8));
+
+        // کارت کانفیگ (لیست کشویی)
+        Ui.GlowCard profileCard = new Ui.GlowCard(24);
+        profileCard.setBorder(BorderFactory.createEmptyBorder(0, 24, 0, 18));
+        profileCard.setLayout(new BorderLayout(16, 0));
+        profileCard.add(new Ui.Icon(Ui.Icon.DOC, Ui.SOFT, 24, 28), BorderLayout.WEST);
+        profileName = Ui.label("—", Ui.TEXT, 15f, Font.PLAIN);
         profileCard.add(profileName, BorderLayout.CENTER);
-        Ui.Chevron down = new Ui.Chevron();
+        Ui.Chevron down = new Ui.Chevron(Ui.TEXT);
         down.setDir(Ui.Chevron.DOWN);
         profileCard.add(down, BorderLayout.EAST);
         profileCard.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         profileCard.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override public void mouseClicked(java.awt.event.MouseEvent e) { showProfileMenu(profileCard); }
         });
-        profileCard.setPreferredSize(new Dimension(300, 38));
-        profileCard.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
-        profileCard.setAlignmentX(JComponent.LEFT_ALIGNMENT);
-        south.add(profileCard);
+        profileCard.setPreferredSize(new Dimension(470, 48));
+        profileCard.setMaximumSize(new Dimension(470, 48));
+        profileCard.setAlignmentX(JComponent.CENTER_ALIGNMENT);
+        col.add(profileCard);
+
         error = Ui.label(" ", Ui.BAD, 12f, Font.PLAIN);
-        error.setAlignmentX(JComponent.LEFT_ALIGNMENT);
-        south.add(Box.createVerticalStrut(6));
-        south.add(error);
-        body.add(south, BorderLayout.SOUTH);
+        error.setAlignmentX(JComponent.CENTER_ALIGNMENT);
+        col.add(Box.createVerticalStrut(2));
+        col.add(error);
+
+        body.content(col, proto);
         root.add(body, BorderLayout.CENTER);
 
-        // ── کشوی لاگ
-        JPanel drawer = new JPanel(new BorderLayout());
-        drawer.setBackground(Ui.BAR);
-        drawer.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, LINE));
-        JPanel head = new JPanel(new BorderLayout());
-        head.setOpaque(false);
-        head.setBorder(BorderFactory.createEmptyBorder(10, 22, 10, 18));
-        head.add(Ui.label(L.t("logs"), Ui.TEXT, 14f, Font.PLAIN), BorderLayout.WEST);
-        logArrow = new Ui.Chevron();
+        // ── کشوی لاگ (نوار پایین «View Logs»)
+        JPanel drawer = new JPanel(new BorderLayout()) {
+            @Override protected void paintComponent(java.awt.Graphics g) {
+                java.awt.Graphics2D g2 = (java.awt.Graphics2D) g.create();
+                Ui.antialias(g2);
+                g2.setPaint(new java.awt.GradientPaint(0, 0, new Color(0x0D1D45), 0, getHeight(), new Color(0x07122C)));
+                g2.fillRect(0, 0, getWidth(), getHeight());
+                g2.setColor(Ui.alpha(Ui.GLOW, 55));
+                g2.setStroke(new java.awt.BasicStroke(5f));
+                g2.drawLine(0, 1, getWidth(), 1);
+                g2.setPaint(new java.awt.LinearGradientPaint(0, 0, getWidth(), 0, new float[]{0f, 0.5f, 1f},
+                        new Color[]{new Color(0x2F7BFF), new Color(0x3FA8FF), new Color(0x2F7BFF)}));
+                g2.setStroke(new java.awt.BasicStroke(1.8f));
+                g2.drawLine(0, 1, getWidth(), 1);
+                g2.dispose();
+            }
+        };
+        drawer.setOpaque(false);
+        JPanel head = transparent(new BorderLayout());
+        head.setBorder(BorderFactory.createEmptyBorder(0, 24, 0, 22));
+        head.setPreferredSize(new Dimension(600, 48));
+        JPanel logTitle = transparent(new FlowLayout(FlowLayout.LEFT, 16, 12));
+        logTitle.add(new Ui.Icon(Ui.Icon.DOC, Ui.SOFT, 24, 26));
+        logTitle.add(Ui.label(L.t("logs"), Ui.SOFT, 16f, Font.PLAIN));
+        head.add(logTitle, BorderLayout.WEST);
+        logArrow = new Ui.Chevron(Ui.TEXT);
         logArrow.setDir(logOpen ? Ui.Chevron.DOWN : Ui.Chevron.RIGHT);
         head.add(logArrow, BorderLayout.EAST);
         head.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        head.addMouseListener(new java.awt.event.MouseAdapter() {
+        java.awt.event.MouseAdapter toggle = new java.awt.event.MouseAdapter() {
             @Override public void mouseClicked(java.awt.event.MouseEvent e) { toggleLog(); }
-        });
+        };
+        head.addMouseListener(toggle);
         drawer.add(head, BorderLayout.NORTH);
         logArea = new JTextArea();
         logArea.setEditable(false);
@@ -366,6 +409,7 @@ public final class Gui {
         applyTheme();
         frame = new JFrame("Fox VPN");
         frame.setUndecorated(true);
+        frame.setBackground(Ui.BG0);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         URL logo = Gui.class.getResource("/logo.png");
         if (logo != null) frame.setIconImage(new ImageIcon(logo).getImage());
@@ -384,8 +428,13 @@ public final class Gui {
 
     /** اندازه را برای «محتوا» تنظیم می‌کند (نه کل پنجره) تا عنوان‌بار پنجره جا را از دکمه‌ها نگیرد. */
     private void fit() {
-        frame.getContentPane().setPreferredSize(new Dimension(470, 440 + (logOpen ? LOG_H : 0)));
+        frame.getContentPane().setPreferredSize(new Dimension(WIN_W, WIN_H + (logOpen ? LOG_H : 0)));
         frame.pack();
+        try { // گوشه‌های گرد پنجره (بدون نوار عنوان سیستم)
+            frame.setShape(new java.awt.geom.RoundRectangle2D.Float(0, 0, frame.getWidth(), frame.getHeight(),
+                    RootPanel.ARC, RootPanel.ARC));
+        } catch (Exception ignored) {
+        }
     }
 
     JFrame frame() { return frame; }
@@ -517,7 +566,7 @@ public final class Gui {
     private void reloadProfiles() {
         Store.Profile p = store.selected();
         Ui.setText(profileName, p == null ? L.t("add_config") : p.title());
-        proto.setText("SSH  |  " + (p == null ? 22 : p.port));
+        proto.setPort(p == null ? 22 : p.port);
     }
 
     // ───────────── اتصال / قطع ─────────────
@@ -640,9 +689,9 @@ public final class Gui {
         power.setEnabled(!busy);
         Ui.setText(status, connected ? L.t("connected") : "reconnecting".equals(state) ? L.t("reconnecting")
                 : working ? L.t("connecting") : L.t("disconnected"));
-        status.setForeground(connected ? Ui.OK : working ? Ui.ACCENT : Ui.MUTED);
-        proto.setFill(connected ? new Color(0x1E8E4E) : new Color(0x22324F));
-        shield.setOn(connected);
+        status.setForeground(connected ? Ui.GREEN : working ? Ui.CYAN : Ui.SOFT);
+        badge.setVisible(connected);
+        glowLine.setColor(connected ? Ui.GREEN : working ? Ui.CYAN : Ui.GLOW);
 
         if (connected) {
             long since = parse(st.getProperty("since"));
@@ -656,7 +705,8 @@ public final class Gui {
         Ui.setText(ipLabel, connected ? L.t("vpn_ip") : L.t("your_ip"));
         Ui.setText(ipValue, "unknown".equals(ip) ? L.t("unknown") : ip);
         flag.setIcon(flagIcon(ipCc));
-        ipValue.setForeground(connected ? Ui.OK : Ui.TEXT);
+        ipValue.setForeground(Ui.TEXT);
+        Ui.setText(country, countryName(ipCc));
 
         String err = !localError.isEmpty() ? localError : lastEngineError;
         error.setText(!active && !busy && !err.isEmpty() ? "<html><div style='width:400px'>" + esc(err) + "</div></html>" : " ");
@@ -666,6 +716,15 @@ public final class Gui {
             bannerShown = true; // فقط یک بار در هر اتصال
             showBanner(banner);
         }
+    }
+
+    /** نام کشور از کد دوحرفی (فارسی در حالت فارسی، وگرنه انگلیسی). */
+    private static String countryName(String cc) {
+        if (cc == null || cc.length() != 2) return " ";
+        Locale loc = new Locale("", cc.toUpperCase(Locale.ROOT));
+        String n = L.isFa() ? loc.getDisplayCountry(new Locale("fa")) : "";
+        if (n.isEmpty() || n.equalsIgnoreCase(cc)) n = loc.getDisplayCountry(Locale.ENGLISH);
+        return n.isEmpty() ? cc.toUpperCase(Locale.ROOT) : n;
     }
 
     private static synchronized ImageIcon flagIcon(String cc) {
@@ -680,21 +739,45 @@ public final class Gui {
         return i;
     }
 
-    /** پس‌زمینهٔ بدنه: رنگ ساده + نقشهٔ نقطه‌ای جهان. */
+    /** پس‌زمینهٔ بدنه: نقشهٔ نقطه‌ای آبی جهان + هالهٔ نرم؛ محتوا (ستون مرکزی و برچسب SSH) روی آن چیده می‌شود. */
     private static final class MapPanel extends JPanel {
         private final Image map;
+        private JComponent col, pill;
 
         MapPanel() {
-            super(new BorderLayout(0, 8));
-            setBackground(Ui.BG);
+            super(null);
+            setOpaque(false);
             URL u = Gui.class.getResource("/worldmap.png");
             map = u == null ? null : new ImageIcon(u).getImage();
+        }
+
+        void content(JComponent col, JComponent pill) {
+            this.col = col;
+            this.pill = pill;
+            add(pill);
+            add(col);
+        }
+
+        @Override
+        public void doLayout() {
+            if (col == null) return;
+            int w = getWidth(), h = getHeight();
+            Dimension c = col.getPreferredSize();
+            int cw = Math.min(w, Math.max(c.width, 480));
+            col.setBounds((w - cw) / 2, 2, cw, Math.min(h - 2, c.height));
+            Dimension p = pill.getPreferredSize();
+            pill.setBounds(18, 8, p.width, p.height);
+        }
+
+        @Override
+        public Dimension getPreferredSize() {
+            return new Dimension(WIN_W, col == null ? 300 : col.getPreferredSize().height + 6);
         }
 
         private java.awt.image.BufferedImage baked;
         private int bakedW;
 
-        /** نقشه یک‌بار با شفافیت داخل پیکسل‌ها پخته می‌شود تا موقع نقاشی ترکیب (composite) لازم نباشد. */
+        /** نقشه یک‌بار با رنگ آبی و شفافیت داخل پیکسل‌ها پخته می‌شود تا موقع نقاشی ترکیب (composite) لازم نباشد. */
         private void bake(int w) {
             int h = Math.max(1, w * map.getHeight(null) / map.getWidth(null));
             java.awt.image.BufferedImage t = new java.awt.image.BufferedImage(w, h, java.awt.image.BufferedImage.TYPE_INT_ARGB);
@@ -705,8 +788,8 @@ public final class Gui {
             for (int y = 0; y < h; y++) {
                 for (int x = 0; x < w; x++) {
                     int px = t.getRGB(x, y);
-                    int al = (int) (((px >>> 24) & 0xFF) * 0.22f);
-                    t.setRGB(x, y, (al << 24) | (px & 0xFFFFFF));
+                    int al = (int) (((px >>> 24) & 0xFF) * 0.55f);
+                    t.setRGB(x, y, (al << 24) | 0x3C80FF);
                 }
             }
             baked = t;
@@ -715,10 +798,18 @@ public final class Gui {
 
         @Override
         protected void paintComponent(java.awt.Graphics g) {
-            super.paintComponent(g);
-            if (map == null || getWidth() < 10) return;
-            if (baked == null || bakedW != getWidth()) bake(getWidth());
-            g.drawImage(baked, 0, Math.max(0, (getHeight() - baked.getHeight()) / 2), null);
+            int w = getWidth(), h = getHeight();
+            if (w < 10) return;
+            java.awt.Graphics2D g2 = (java.awt.Graphics2D) g.create();
+            Ui.antialias(g2);
+            float r = w * 0.55f;
+            g2.setPaint(new java.awt.RadialGradientPaint(w / 2f, h * 0.42f, r, new float[]{0f, 1f},
+                    new Color[]{Ui.alpha(Ui.GLOW, 46), Ui.alpha(Ui.GLOW, 0)}));
+            g2.fillRect(0, 0, w, h);
+            g2.dispose();
+            if (map == null) return;
+            if (baked == null || bakedW != w) bake(w);
+            g.drawImage(baked, 0, Math.max(0, (h - baked.getHeight()) / 2 - 6), null);
         }
     }
 

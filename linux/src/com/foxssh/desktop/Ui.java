@@ -17,7 +17,12 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.BasicStroke;
 import java.awt.RenderingHints;
+import java.awt.LinearGradientPaint;
+import java.awt.RadialGradientPaint;
+import java.awt.geom.AffineTransform;
 import java.awt.geom.Arc2D;
+import java.awt.geom.Path2D;
+import java.awt.geom.RoundRectangle2D;
 import java.awt.geom.Ellipse2D;
 import java.awt.geom.Line2D;
 import java.io.InputStream;
@@ -28,6 +33,34 @@ final class Ui {
             FIELD = new Color(0x1B2845), ACCENT = new Color(0x2D9CFF), TEXT = new Color(0xE8EEF9),
             MUTED = new Color(0x8895B3), OK = new Color(0x2ECC71), BAD = new Color(0xFF5C5C),
             DARK_BTN = new Color(0x22324F);
+    // پالت «نئون آبی» رابط اصلی
+    static final Color BG0 = new Color(0x050B1A), BG1 = new Color(0x0B1A3B), GLOW = new Color(0x2F7BFF),
+            CYAN = new Color(0x22B8FF), GREEN = new Color(0x2BE07A), PANEL_TOP = new Color(0x132350),
+            PANEL_BOT = new Color(0x0A1632), SOFT = new Color(0xA9B8D8);
+
+    static Color alpha(Color c, int a) {
+        return new Color(c.getRed(), c.getGreen(), c.getBlue(), Math.max(0, Math.min(255, a)));
+    }
+
+    /** فونت ایتالیک (کج‌شده) برای لوگوتایپ. */
+    static Font italic(Font f) {
+        return f.deriveFont(AffineTransform.getShearInstance(-0.17, 0));
+    }
+
+    /** پنل شیشه‌ای با لبهٔ درخشان؛ داخل کادر (۳ پیکسل حاشیه برای هاله). */
+    static void glowPanel(Graphics2D g2, int w, int h, int arc, Color edge) {
+        int x = 3, y = 3, ww = w - 6, hh = h - 6;
+        for (int i = 3; i >= 1; i--) {
+            g2.setColor(alpha(edge, 16));
+            g2.setStroke(new BasicStroke(i * 2f));
+            g2.drawRoundRect(x, y, ww, hh, arc, arc);
+        }
+        g2.setPaint(new GradientPaint(0, y, PANEL_TOP, 0, y + hh, PANEL_BOT));
+        g2.fillRoundRect(x, y, ww, hh, arc, arc);
+        g2.setPaint(new GradientPaint(0, y, alpha(edge, 235), 0, y + hh, alpha(edge, 150)));
+        g2.setStroke(new BasicStroke(1.5f));
+        g2.drawRoundRect(x, y, ww, hh, arc, arc);
+    }
 
     private static Font regular, bold, medium, pRegular, pMedium, pSemi, pBold;
 
@@ -153,7 +186,7 @@ final class Ui {
             setFocusPainted(false);
             setOpaque(false);
             setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-            setPreferredSize(new Dimension(48, 44));
+            setPreferredSize(new Dimension(48, 30));
         }
 
         @Override
@@ -165,9 +198,9 @@ final class Ui {
                 g2.fillRoundRect(4, 4, getWidth() - 8, getHeight() - 8, 12, 12);
             }
             g2.setColor(TEXT);
-            g2.setStroke(new BasicStroke(2.4f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            g2.setStroke(new BasicStroke(2.8f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
             int cx = getWidth() / 2, cy = getHeight() / 2;
-            for (int i = -1; i <= 1; i++) g2.draw(new Line2D.Float(cx - 9, cy + i * 6, cx + 9, cy + i * 6));
+            for (int i = -1; i <= 1; i++) g2.draw(new Line2D.Float(cx - 11, cy + i * 6, cx + 11, cy + i * 6));
             g2.dispose();
         }
     }
@@ -176,9 +209,15 @@ final class Ui {
     static final class Chevron extends JComponent {
         static final int UP = 0, DOWN = 1, RIGHT = 2;
         private int dir = UP;
+        private Color color = MUTED;
 
         Chevron() {
             setPreferredSize(new Dimension(28, 24));
+        }
+
+        Chevron(Color c) {
+            this();
+            color = c;
         }
 
         void setDir(int d) {
@@ -190,7 +229,7 @@ final class Ui {
         protected void paintComponent(Graphics g) {
             Graphics2D g2 = (Graphics2D) g.create();
             antialias(g2);
-            g2.setColor(MUTED);
+            g2.setColor(color);
             g2.setStroke(new BasicStroke(2.4f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
             int cx = getWidth() / 2, cy = getHeight() / 2;
             if (dir == RIGHT) {
@@ -345,42 +384,52 @@ final class Ui {
             Graphics2D g2 = (Graphics2D) g.create();
             antialias(g2);
             int w = getWidth(), h = getHeight();
-            int d = Math.min(w, h) - 24;
-            int x = (w - d) / 2, y = (h - d) / 2;
-            Color ring = state == ON ? OK : state == BUSY ? ACCENT : new Color(0x5B8DEF);
-            // هالهٔ نرم
-            if (true) {
-                for (int i = 6; i >= 1; i--) {
-                    g2.setColor(new Color(ring.getRed(), ring.getGreen(), ring.getBlue(), 10));
-                    g2.fill(new Ellipse2D.Float(x - i * 3, y - i * 3, d + i * 6, d + i * 6));
-                }
-            }
-            // بدنهٔ دایره
-            if (state == ON) {
-                g2.setPaint(new GradientPaint(0, y, new Color(0x3EE08A), 0, y + d, new Color(0x1FA85A)));
-            } else {
-                g2.setPaint(new GradientPaint(0, y, hover ? new Color(0x2A3C66) : new Color(0x22335A),
-                        0, y + d, new Color(0x16213D)));
-            }
-            g2.fill(new Ellipse2D.Float(x, y, d, d));
-            // حلقه
-            g2.setStroke(new BasicStroke(4f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-            g2.setColor(ring);
-            if (state == BUSY) {
-                g2.setColor(new Color(0x2B3A5C));
-                g2.draw(new Ellipse2D.Float(x + 2, y + 2, d - 4, d - 4));
-                g2.setColor(ACCENT);
-                g2.draw(new Arc2D.Float(x + 2, y + 2, d - 4, d - 4, -angle, 100, Arc2D.OPEN));
-            } else {
-                g2.draw(new Ellipse2D.Float(x + 2, y + 2, d - 4, d - 4));
+            float cx = w / 2f, cy = h / 2f, R = Math.min(w, h) / 2f - 1;
+            boolean on = state == ON, busy = state == BUSY;
+            Color glow = on ? GREEN : GLOW;
+            Color bright = on ? new Color(0xA6FFCB) : busy ? CYAN : (hover ? new Color(0xA9CDFF) : new Color(0x7DB6FF));
+            // هالهٔ بیرونی
+            g2.setPaint(new RadialGradientPaint(cx, cy, R, new float[]{0f, 0.60f, 0.78f, 1f},
+                    new Color[]{alpha(glow, 0), alpha(glow, on ? 90 : 60), alpha(glow, on ? 38 : 22), alpha(glow, 0)}));
+            g2.fill(new Ellipse2D.Float(cx - R, cy - R, 2 * R, 2 * R));
+            // حلقهٔ محو بیرونی
+            float r1 = R * 0.84f;
+            g2.setStroke(new BasicStroke(1.4f));
+            g2.setColor(alpha(glow, on ? 80 : 55));
+            g2.draw(new Ellipse2D.Float(cx - r1, cy - r1, 2 * r1, 2 * r1));
+            // حلقهٔ روشن
+            float r2 = R * 0.68f;
+            g2.setColor(alpha(glow, 70));
+            g2.setStroke(new BasicStroke(7f));
+            g2.draw(new Ellipse2D.Float(cx - r2, cy - r2, 2 * r2, 2 * r2));
+            // بدنهٔ تیره
+            g2.setColor(on ? new Color(0x072A1E) : new Color(0x08142E));
+            g2.fill(new Ellipse2D.Float(cx - r2, cy - r2, 2 * r2, 2 * r2));
+            g2.setColor(bright);
+            g2.setStroke(new BasicStroke(3f));
+            g2.draw(new Ellipse2D.Float(cx - r2, cy - r2, 2 * r2, 2 * r2));
+            // دیسک داخلی
+            float r4 = R * 0.52f;
+            Color top = on ? new Color(0x45E890) : new Color(0x2B4F93);
+            Color bot = on ? new Color(0x118A48) : new Color(0x0F2149);
+            g2.setPaint(new GradientPaint(0, cy - r4, top, 0, cy + r4, bot));
+            g2.fill(new Ellipse2D.Float(cx - r4, cy - r4, 2 * r4, 2 * r4));
+            g2.setColor(new Color(255, 255, 255, on ? 70 : 38));
+            g2.setStroke(new BasicStroke(1.4f));
+            g2.draw(new Ellipse2D.Float(cx - r4, cy - r4, 2 * r4, 2 * r4));
+            if (busy) {
+                g2.setColor(new Color(0x24365E));
+                g2.setStroke(new BasicStroke(4f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                g2.draw(new Ellipse2D.Float(cx - r2, cy - r2, 2 * r2, 2 * r2));
+                g2.setColor(CYAN);
+                g2.draw(new Arc2D.Float(cx - r2, cy - r2, 2 * r2, 2 * r2, -angle, 100, Arc2D.OPEN));
             }
             // نماد پاور
-            Color ic = state == ON ? Color.WHITE : state == BUSY ? ACCENT : Color.WHITE;
-            g2.setColor(ic);
-            g2.setStroke(new BasicStroke(7f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-            int cx = w / 2, cy = h / 2, r = d / 5 + 4;
-            g2.draw(new Arc2D.Float(cx - r, cy - r + 4, 2 * r, 2 * r, 120, 300, Arc2D.OPEN));
-            g2.draw(new Line2D.Float(cx, cy - r - 6, cx, cy + 2));
+            float ir = R * 0.21f;
+            g2.setColor(Color.WHITE);
+            g2.setStroke(new BasicStroke(Math.max(4f, R * 0.06f), BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            g2.draw(new Arc2D.Float(cx - ir, cy - ir + 3, 2 * ir, 2 * ir, 120, 300, Arc2D.OPEN));
+            g2.draw(new Line2D.Float(cx, cy - ir - 4, cx, cy + 2));
             g2.dispose();
         }
     }
@@ -420,5 +469,312 @@ final class Ui {
         l.setForeground(c);
         l.setFont(pick(t, size, style));
         return l;
+    }
+
+    // ───────────── اجزای رابط جدید (نئون آبی) ─────────────
+
+    /** کارت شیشه‌ای با لبهٔ درخشان. */
+    static class GlowCard extends JPanel {
+        private final int arc;
+        private Color edge = new Color(0x2F6FE0);
+
+        GlowCard(int arc) {
+            this.arc = arc;
+            setOpaque(false);
+        }
+
+        void setEdge(Color c) {
+            edge = c;
+            repaint();
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            antialias(g2);
+            glowPanel(g2, getWidth(), getHeight(), arc, edge);
+            g2.dispose();
+        }
+    }
+
+    /** آیکون‌های خطی: سرور، مانیتور، سند. */
+    static final class Icon extends JComponent {
+        static final int SERVER = 0, MONITOR = 1, DOC = 2;
+        private final int kind;
+        private final Color color;
+
+        Icon(int kind, Color color, int w, int h) {
+            this.kind = kind;
+            this.color = color;
+            setPreferredSize(new Dimension(w, h));
+            setOpaque(false);
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            antialias(g2);
+            draw(g2, kind, color, getWidth(), getHeight());
+            g2.dispose();
+        }
+
+        static void draw(Graphics2D g2, int kind, Color c, int w, int h) {
+            g2.setColor(c);
+            g2.setStroke(new BasicStroke(2.2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            float cx = w / 2f, cy = h / 2f;
+            if (kind == MONITOR) {
+                float sw = Math.min(w - 4, 32), sh = sw * 0.66f;
+                g2.draw(new RoundRectangle2D.Float(cx - sw / 2, cy - sh / 2 - 3, sw, sh, 5, 5));
+                g2.draw(new Line2D.Float(cx, cy + sh / 2 - 3, cx, cy + sh / 2 + 3));
+                g2.draw(new Line2D.Float(cx - 6, cy + sh / 2 + 4, cx + 6, cy + sh / 2 + 4));
+            } else if (kind == SERVER) {
+                float bw = Math.min(w - 2, 15), bh = 5.2f;
+                for (int i = -1; i <= 1; i++) {
+                    float y = cy + i * 6.4f - bh / 2;
+                    g2.setStroke(new BasicStroke(1.9f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                    g2.draw(new RoundRectangle2D.Float(cx - bw / 2, y, bw, bh, 3, 3));
+                    g2.fill(new Ellipse2D.Float(cx + bw / 2 - 5, y + bh / 2 - 0.9f, 1.8f, 1.8f));
+                }
+            } else {
+                float dw = Math.min(w - 6, 19), dh = Math.min(h - 2, 24), x = cx - dw / 2, y = cy - dh / 2;
+                Path2D.Float p = new Path2D.Float();
+                p.moveTo(x + 4, y);
+                p.lineTo(x + dw - 4, y);
+                p.quadTo(x + dw, y, x + dw, y + 4);
+                p.lineTo(x + dw, y + dh - 4);
+                p.quadTo(x + dw, y + dh, x + dw - 4, y + dh);
+                p.lineTo(x + 4, y + dh);
+                p.quadTo(x, y + dh, x, y + dh - 4);
+                p.lineTo(x, y + 4);
+                p.quadTo(x, y, x + 4, y);
+                g2.draw(p);
+                g2.setStroke(new BasicStroke(1.8f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                for (int i = 0; i < 3; i++) {
+                    float ly = y + 7.5f + i * 5.2f;
+                    g2.draw(new Line2D.Float(x + 5, ly, x + dw - (i == 2 ? 9 : 5), ly));
+                }
+            }
+        }
+    }
+
+    /** برچسب «SSH | سرور | پورت» با لبهٔ درخشان. */
+    static final class PortPill extends JComponent {
+        private String proto = "SSH";
+        private int port = 22;
+
+        PortPill() {
+            setOpaque(false);
+            setFont(latin(15f, Font.BOLD));
+        }
+
+        void setPort(int p) {
+            if (p != port) {
+                port = p;
+                revalidate();
+                repaint();
+            }
+        }
+
+        @Override
+        public Dimension getPreferredSize() {
+            java.awt.FontMetrics fm = getFontMetrics(getFont());
+            return new Dimension(fm.stringWidth(proto) + fm.stringWidth(String.valueOf(port)) + 86, 40);
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            antialias(g2);
+            int w = getWidth(), h = getHeight();
+            glowPanel(g2, w, h, h, new Color(0x2F6FE0));
+            g2.setFont(getFont());
+            java.awt.FontMetrics fm = g2.getFontMetrics();
+            int base = (h - fm.getHeight()) / 2 + fm.getAscent();
+            int x = 20;
+            g2.setColor(TEXT);
+            g2.drawString(proto, x, base);
+            x += fm.stringWidth(proto) + 12;
+            g2.setColor(alpha(SOFT, 170));
+            g2.setStroke(new BasicStroke(1.6f));
+            g2.draw(new Line2D.Float(x, h / 2f - 9, x, h / 2f + 9));
+            x += 10;
+            g2.translate(x, 0);
+            Icon.draw(g2, Icon.SERVER, TEXT, 18, h);
+            g2.translate(-x, 0);
+            x += 24;
+            g2.setColor(TEXT);
+            g2.drawString(String.valueOf(port), x, base);
+            g2.dispose();
+        }
+    }
+
+    /** خط درخشان افقی زیر وضعیت. */
+    static final class GlowLine extends JComponent {
+        private Color color = GLOW;
+
+        GlowLine() {
+            setOpaque(false);
+            setPreferredSize(new Dimension(360, 8));
+        }
+
+        void setColor(Color c) {
+            if (!c.equals(color)) {
+                color = c;
+                repaint();
+            }
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            antialias(g2);
+            int w = getWidth(), cy = getHeight() / 2;
+            g2.setPaint(new LinearGradientPaint(0, 0, w, 0, new float[]{0f, 0.5f, 1f},
+                    new Color[]{alpha(color, 0), alpha(color, 70), alpha(color, 0)}));
+            g2.setStroke(new BasicStroke(6f));
+            g2.draw(new Line2D.Float(0, cy, w, cy));
+            g2.setPaint(new LinearGradientPaint(0, 0, w, 0, new float[]{0f, 0.5f, 1f},
+                    new Color[]{alpha(color, 0), alpha(color, 255), alpha(color, 0)}));
+            g2.setStroke(new BasicStroke(1.6f));
+            g2.draw(new Line2D.Float(0, cy, w, cy));
+            g2.dispose();
+        }
+    }
+
+    /** دایرهٔ سبز با تیک کنار «Connected». */
+    static final class CheckBadge extends JComponent {
+        CheckBadge() {
+            setOpaque(false);
+            setPreferredSize(new Dimension(30, 30));
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            antialias(g2);
+            int w = getWidth(), h = getHeight();
+            float d = Math.min(w, h) - 4, x = (w - d) / 2f, y = (h - d) / 2f;
+            g2.setColor(alpha(GREEN, 50));
+            g2.fill(new Ellipse2D.Float(x - 2, y - 2, d + 4, d + 4));
+            g2.setPaint(new GradientPaint(0, y, new Color(0x3CEB8A), 0, y + d, new Color(0x16A957)));
+            g2.fill(new Ellipse2D.Float(x, y, d, d));
+            g2.setColor(new Color(0x06241A));
+            g2.setStroke(new BasicStroke(3f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            float cx = w / 2f, cy = h / 2f;
+            g2.draw(new Line2D.Float(cx - 5.5f, cy + 0.5f, cx - 1.5f, cy + 4.5f));
+            g2.draw(new Line2D.Float(cx - 1.5f, cy + 4.5f, cx + 6, cy - 4));
+            g2.dispose();
+        }
+    }
+
+    /** دکمهٔ کوچک کنترل پنجره: کمینه (—) یا بستن (×). */
+    static final class WinGlyph extends JButton {
+        static final int MIN = 0, CLOSE = 1;
+        private final int kind;
+
+        WinGlyph(int kind) {
+            this.kind = kind;
+            setContentAreaFilled(false);
+            setBorderPainted(false);
+            setFocusPainted(false);
+            setOpaque(false);
+            setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            setPreferredSize(new Dimension(34, 28));
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            antialias(g2);
+            boolean hot = getModel().isRollover();
+            g2.setColor(kind == CLOSE && hot ? new Color(0xFF7885) : hot ? Color.WHITE : TEXT);
+            g2.setStroke(new BasicStroke(2.2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            float cx = getWidth() / 2f, cy = getHeight() / 2f;
+            if (kind == MIN) {
+                g2.draw(new Line2D.Float(cx - 8, cy, cx + 8, cy));
+            } else {
+                g2.draw(new Line2D.Float(cx - 6.5f, cy - 6.5f, cx + 6.5f, cy + 6.5f));
+                g2.draw(new Line2D.Float(cx - 6.5f, cy + 6.5f, cx + 6.5f, cy - 6.5f));
+            }
+            g2.dispose();
+        }
+    }
+
+    /** جداکنندهٔ عمودی نازک. */
+    static final class VDivider extends JComponent {
+        VDivider(int h) {
+            setPreferredSize(new Dimension(2, h));
+            setOpaque(false);
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setPaint(new GradientPaint(0, 0, alpha(SOFT, 0), 0, getHeight() / 2f, alpha(SOFT, 130), true));
+            g2.fillRect(0, 0, 1, getHeight());
+            g2.dispose();
+        }
+    }
+
+    /** هدر: زبانهٔ مرکزی مورب با لبهٔ درخشان؛ لوگو وسط، کنترل پنجره بالا-راست، همبرگر زیر آن. */
+    static final class Header extends JPanel {
+        private final JComponent brand, controls, burger;
+
+        Header(JComponent brand, JComponent controls, JComponent burger) {
+            super(null);
+            this.brand = brand;
+            this.controls = controls;
+            this.burger = burger;
+            setOpaque(false);
+            add(brand);
+            add(controls);
+            add(burger);
+        }
+
+        @Override
+        public void doLayout() {
+            int w = getWidth(), h = getHeight();
+            Dimension b = brand.getPreferredSize(), c = controls.getPreferredSize(), u = burger.getPreferredSize();
+            brand.setBounds((w - b.width) / 2, 6, b.width, b.height);
+            controls.setBounds(w - c.width - 20, 8, c.width, c.height);
+            burger.setBounds(w - u.width - 14, h - u.height, u.width, u.height);
+        }
+
+        private Path2D.Float tab(int w, int h, float inset) {
+            float sh = h * 0.58f;
+            Path2D.Float p = new Path2D.Float();
+            p.moveTo(0, sh);
+            p.lineTo(w * 0.21f, sh);
+            p.lineTo(w * 0.29f, h - inset);
+            p.lineTo(w * 0.71f, h - inset);
+            p.lineTo(w * 0.79f, sh);
+            p.lineTo(w, sh);
+            return p;
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            antialias(g2);
+            int w = getWidth(), h = getHeight();
+            Path2D.Float line = tab(w, h, 2);
+            Path2D.Float fill = new Path2D.Float(line);
+            fill.lineTo(w, 0);
+            fill.lineTo(0, 0);
+            fill.closePath();
+            g2.setPaint(new GradientPaint(0, 0, new Color(0x0A1633), 0, h, new Color(0x0E2150)));
+            g2.fill(fill);
+            g2.setColor(alpha(CYAN, 26));
+            g2.setStroke(new BasicStroke(7f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            g2.draw(line);
+            g2.setColor(alpha(CYAN, 50));
+            g2.setStroke(new BasicStroke(4f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            g2.draw(line);
+            g2.setPaint(new LinearGradientPaint(0, 0, w, 0, new float[]{0f, 0.2f, 0.5f, 0.8f, 1f},
+                    new Color[]{alpha(GLOW, 90), new Color(0x3F8CFF), new Color(0x35C4FF), new Color(0x3F8CFF), alpha(GLOW, 90)}));
+            g2.setStroke(new BasicStroke(1.8f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            g2.draw(line);
+            g2.dispose();
+        }
     }
 }

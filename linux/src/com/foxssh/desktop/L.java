@@ -18,8 +18,8 @@ final class L {
         a("connecting", "در حال اتصال…", "Connecting…");
         a("reconnecting", "اتصال مجدد…", "Reconnecting…");
         a("your_ip", "آی‌پی شما", "Your IP");
-        a("vpn_ip", "آی‌پی سرور (VPN)", "VPN IP");
-        a("logs", "لاگ‌ها", "LOGS");
+        a("vpn_ip", "آی‌پی شما (VPN)", "Your IP (VPN)");
+        a("logs", "مشاهده لاگ‌ها", "View Logs");
         a("add_config", "افزودن کانفیگ", "Add a config");
         a("menu_configs", "کانفیگ‌ها", "Configs");
         a("menu_tunnels", "تانل‌ها (Port Forwarding)", "Tunnels (Port forwarding)");
