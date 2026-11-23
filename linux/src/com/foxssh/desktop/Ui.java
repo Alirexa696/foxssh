@@ -337,9 +337,9 @@ final class Ui {
             int w = getWidth(), h = getHeight();
             int d = Math.min(w, h) - 24;
             int x = (w - d) / 2, y = (h - d) / 2;
-            Color ring = state == ON ? OK : state == BUSY ? ACCENT : new Color(0x2B3A5C);
+            Color ring = state == ON ? OK : state == BUSY ? ACCENT : new Color(0x5B8DEF);
             // هالهٔ نرم
-            if (state != OFF) {
+            if (true) {
                 for (int i = 6; i >= 1; i--) {
                     g2.setColor(new Color(ring.getRed(), ring.getGreen(), ring.getBlue(), 10));
                     g2.fill(new Ellipse2D.Float(x - i * 3, y - i * 3, d + i * 6, d + i * 6));
@@ -349,8 +349,8 @@ final class Ui {
             if (state == ON) {
                 g2.setPaint(new GradientPaint(0, y, new Color(0x3EE08A), 0, y + d, new Color(0x1FA85A)));
             } else {
-                g2.setPaint(new GradientPaint(0, y, hover ? new Color(0x1E2C4D) : new Color(0x182440),
-                        0, y + d, new Color(0x111A30)));
+                g2.setPaint(new GradientPaint(0, y, hover ? new Color(0x2A3C66) : new Color(0x22335A),
+                        0, y + d, new Color(0x16213D)));
             }
             g2.fill(new Ellipse2D.Float(x, y, d, d));
             // حلقه
@@ -365,7 +365,7 @@ final class Ui {
                 g2.draw(new Ellipse2D.Float(x + 2, y + 2, d - 4, d - 4));
             }
             // نماد پاور
-            Color ic = state == ON ? Color.WHITE : state == BUSY ? ACCENT : new Color(0xC9D4EC);
+            Color ic = state == ON ? Color.WHITE : state == BUSY ? ACCENT : Color.WHITE;
             g2.setColor(ic);
             g2.setStroke(new BasicStroke(7f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
             int cx = w / 2, cy = h / 2, r = d / 5 + 4;
