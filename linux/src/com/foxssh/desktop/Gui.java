@@ -312,13 +312,19 @@ public final class Gui {
         applyFonts();
         frame.setContentPane(buildMain());
         frame.setResizable(false);
-        frame.setSize(470, 440);
+        fit();
         frame.setLocationRelativeTo(null);
         reloadProfiles();
         frame.setVisible(true);
         SwingUtilities.invokeLater(() -> System.err.println("[fox] power=" + power.getBounds() + " showing=" + power.isShowing()
                 + " parent=" + power.getParent().getBounds()));
         poller.scheduleWithFixedDelay(this::poll, 0, 1, TimeUnit.SECONDS);
+    }
+
+    /** اندازه را برای «محتوا» تنظیم می‌کند (نه کل پنجره) تا عنوان‌بار پنجره جا را از دکمه‌ها نگیرد. */
+    private void fit() {
+        frame.getContentPane().setPreferredSize(new Dimension(470, 440 + (logOpen ? LOG_H : 0)));
+        frame.pack();
     }
 
     JFrame frame() { return frame; }
@@ -333,8 +339,7 @@ public final class Gui {
 
     private void rebuild() {
         frame.setContentPane(buildMain());
-        frame.setSize(470, 440 + (logOpen ? LOG_H : 0));
-        frame.revalidate();
+        fit();
         frame.repaint();
         reloadProfiles();
         lastEngineError = "";
@@ -427,8 +432,7 @@ public final class Gui {
         logScroll.setVisible(logOpen);
         logArrow.setDir(logOpen ? Ui.Chevron.DOWN : Ui.Chevron.RIGHT);
         if (frame != null) {
-            frame.setSize(frame.getWidth(), frame.getHeight() + (logOpen ? LOG_H : -LOG_H));
-            frame.revalidate();
+            fit();
         }
         refreshLog();
     }
