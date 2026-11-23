@@ -109,6 +109,17 @@ final class Ui {
         return pBold.deriveFont(size);
     }
 
+    private static Font wordFont;
+
+    /** فونت لوگوتایپ (Montserrat Italic)؛ در نبودش Poppins Bold با کجی مصنوعی. */
+    static synchronized Font display(float size) {
+        if (wordFont == null) {
+            wordFont = load("/fonts/Montserrat-Italic.ttf");
+            if (wordFont == null) wordFont = italic(latinBold(20f));
+        }
+        return wordFont.deriveFont(size);
+    }
+
     static boolean hasArabic(String s) {
         if (s == null) return false;
         for (int i = 0; i < s.length(); i++) {
@@ -645,7 +656,7 @@ final class Ui {
     static final class CheckBadge extends JComponent {
         CheckBadge() {
             setOpaque(false);
-            setPreferredSize(new Dimension(30, 30));
+            setPreferredSize(new Dimension(26, 26));
         }
 
         @Override
@@ -735,7 +746,7 @@ final class Ui {
         public void doLayout() {
             int w = getWidth(), h = getHeight();
             Dimension b = brand.getPreferredSize(), c = controls.getPreferredSize(), u = burger.getPreferredSize();
-            brand.setBounds((w - b.width) / 2, 6, b.width, b.height);
+            brand.setBounds((w - b.width) / 2, Math.max(4, (h - 4 - b.height) / 2), b.width, b.height);
             controls.setBounds(w - c.width - 20, 8, c.width, c.height);
             burger.setBounds(w - u.width - 14, h - u.height, u.width, u.height);
         }
@@ -744,10 +755,10 @@ final class Ui {
             float sh = h * 0.58f;
             Path2D.Float p = new Path2D.Float();
             p.moveTo(0, sh);
-            p.lineTo(w * 0.21f, sh);
-            p.lineTo(w * 0.29f, h - inset);
-            p.lineTo(w * 0.71f, h - inset);
-            p.lineTo(w * 0.79f, sh);
+            p.lineTo(w * 0.15f, sh);
+            p.lineTo(w * 0.23f, h - inset);
+            p.lineTo(w * 0.77f, h - inset);
+            p.lineTo(w * 0.85f, sh);
             p.lineTo(w, sh);
             return p;
         }
@@ -774,6 +785,68 @@ final class Ui {
                     new Color[]{alpha(GLOW, 90), new Color(0x3F8CFF), new Color(0x35C4FF), new Color(0x3F8CFF), alpha(GLOW, 90)}));
             g2.setStroke(new BasicStroke(1.8f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
             g2.draw(line);
+            g2.dispose();
+        }
+    }
+
+    /** لوگوتایپ «Fox VPN»: حروف ضخیم کج‌شده؛ Fox سفید-نقره‌ای و VPN آبی نئونی با گرادیان و هاله. */
+    static final class Wordmark extends JComponent {
+        private static final float WEIGHT = 4.2f; // ضخامت‌دهی با کانتور (فونت متغیر در حالت Regular بارگذاری می‌شود)
+        private final Font font;
+        private final float size;
+
+        Wordmark(float size) {
+            this.size = size;
+            this.font = display(size);
+            setOpaque(false);
+        }
+
+        private float gap() {
+            return size * 0.34f;
+        }
+
+        @Override
+        public Dimension getPreferredSize() {
+            java.awt.FontMetrics fm = getFontMetrics(font);
+            return new Dimension(fm.stringWidth("Fox") + fm.stringWidth("VPN") + Math.round(gap()) + Math.round(size * 0.28f),
+                    fm.getHeight() + 6);
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            antialias(g2);
+            g2.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
+            java.awt.FontMetrics fm = g2.getFontMetrics(font);
+            float base = (getHeight() - fm.getHeight()) / 2f + fm.getAscent();
+            float top = base - fm.getAscent() * 0.78f;
+            java.awt.font.FontRenderContext frc = g2.getFontRenderContext();
+            float x = 2;
+            java.awt.Shape fox = font.createGlyphVector(frc, "Fox").getOutline(x, base);
+            x += fm.stringWidth("Fox") + gap();
+            java.awt.Shape vpn = font.createGlyphVector(frc, "VPN").getOutline(x, base);
+            // سایهٔ ملایم Fox
+            g2.setColor(new Color(0, 0, 0, 90));
+            g2.translate(0, 1.6);
+            g2.fill(fox);
+            g2.translate(0, -1.6);
+            GradientPaint foxPaint = new GradientPaint(0, top, Color.WHITE, 0, base, new Color(0x9FB0D6));
+            g2.setPaint(foxPaint);
+            g2.fill(fox);
+            g2.setStroke(new BasicStroke(WEIGHT, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 3f));
+            g2.draw(fox);
+            // هالهٔ VPN
+            g2.setColor(alpha(CYAN, 26));
+            g2.setStroke(new BasicStroke(7f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            g2.draw(vpn);
+            g2.setColor(alpha(CYAN, 48));
+            g2.setStroke(new BasicStroke(3.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            g2.draw(vpn);
+            GradientPaint vpnPaint = new GradientPaint(0, top, new Color(0x5FDBFF), 0, base, new Color(0x1E6FFF));
+            g2.setPaint(vpnPaint);
+            g2.fill(vpn);
+            g2.setStroke(new BasicStroke(WEIGHT, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 3f));
+            g2.draw(vpn);
             g2.dispose();
         }
     }

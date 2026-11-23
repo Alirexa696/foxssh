@@ -60,7 +60,7 @@ public final class Gui {
     private static final String CTL = "/usr/lib/foxssh/foxssh-ctl";
     private static final Path RUN = Paths.get("/run/foxssh");
     private static final int LOG_H = 200;
-    private static final int WIN_W = 600, WIN_H = 480;
+    private static final int WIN_W = 500, WIN_H = 428;
 
     // نقاط تزریق برای تست ظاهر (در حالت عادی دست نمی‌خورند)
     static BooleanSupplier activeFn = Gui::systemctlActive;
@@ -206,18 +206,13 @@ public final class Gui {
         JPanel root = new RootPanel();
 
         // ── هدر: لوگو و نام وسط، کنترل پنجره بالا-راست، همبرگر زیر آن
-        JPanel brand = transparent(new FlowLayout(FlowLayout.CENTER, 8, 0));
+        JPanel brand = transparent(new FlowLayout(FlowLayout.CENTER, 6, 0));
         URL logo = Gui.class.getResource("/logo.png");
         if (logo != null) {
-            Image img = new ImageIcon(logo).getImage().getScaledInstance(46, 46, Image.SCALE_SMOOTH);
+            Image img = new ImageIcon(logo).getImage().getScaledInstance(62, 62, Image.SCALE_SMOOTH);
             brand.add(new JLabel(new ImageIcon(img)));
         }
-        JLabel fox = Ui.label("Fox", Ui.TEXT, 30f, Font.BOLD);
-        fox.setFont(Ui.italic(Ui.latinBold(30f)));
-        JLabel vpn = Ui.label("VPN", new Color(0x2E9BFF), 30f, Font.BOLD);
-        vpn.setFont(Ui.italic(Ui.latinBold(30f)));
-        brand.add(fox);
-        brand.add(vpn);
+        brand.add(new Ui.Wordmark(34f));
 
         JPanel controls = transparent(new FlowLayout(FlowLayout.CENTER, 0, 0));
         Ui.WinGlyph minimize = new Ui.WinGlyph(Ui.WinGlyph.MIN);
@@ -232,7 +227,7 @@ public final class Gui {
         Ui.Hamburger burger = new Ui.Hamburger();
         burger.addActionListener(e -> showMenu(burger));
         Ui.Header bar = new Ui.Header(brand, controls, burger);
-        bar.setPreferredSize(new Dimension(600, 76));
+        bar.setPreferredSize(new Dimension(WIN_W, 80));
 
         // امکان جابه‌جایی پنجره با گرفتن هدر یا پس‌زمینه
         java.awt.event.MouseAdapter dragWindow = new java.awt.event.MouseAdapter() {
@@ -264,14 +259,14 @@ public final class Gui {
         col.setLayout(new BoxLayout(col, BoxLayout.Y_AXIS));
 
         power = new Ui.PowerButton();
-        power.setPreferredSize(new Dimension(144, 144));
-        power.setMaximumSize(new Dimension(144, 144));
+        power.setPreferredSize(new Dimension(118, 118));
+        power.setMaximumSize(new Dimension(118, 118));
         power.setAlignmentX(JComponent.CENTER_ALIGNMENT);
         power.addActionListener(e -> onPower());
         col.add(power);
 
         JPanel statusRow = transparent(new FlowLayout(FlowLayout.CENTER, 10, 0));
-        status = Ui.label(L.t("disconnected"), Ui.MUTED, 27f, Font.BOLD);
+        status = Ui.label(L.t("disconnected"), Ui.MUTED, 22f, Font.BOLD);
         badge = new Ui.CheckBadge();
         badge.setVisible(false);
         statusRow.add(status);
@@ -280,33 +275,32 @@ public final class Gui {
         col.add(statusRow);
 
         glowLine = new Ui.GlowLine();
-        glowLine.setMaximumSize(new Dimension(380, 8));
+        glowLine.setMaximumSize(new Dimension(320, 8));
         glowLine.setAlignmentX(JComponent.CENTER_ALIGNMENT);
         col.add(glowLine);
 
         stats = Ui.label(" ", Ui.SOFT, 12f, Font.PLAIN);
         stats.setFont(new Font("SansSerif", Font.PLAIN, 12)); // فلش‌های ↑↓ در فونت‌های برنامه نیست
         stats.setAlignmentX(JComponent.CENTER_ALIGNMENT);
-        col.add(Box.createVerticalStrut(2));
         col.add(stats);
-        col.add(Box.createVerticalStrut(6));
+        col.add(Box.createVerticalStrut(4));
 
         // کارت IP: مانیتور + آی‌پی | پرچم + کشور
         Ui.GlowCard ipCard = new Ui.GlowCard(26);
         ipCard.setLayout(new java.awt.GridBagLayout());
-        JPanel left = transparent(new FlowLayout(FlowLayout.CENTER, 12, 0));
-        left.add(new Ui.Icon(Ui.Icon.MONITOR, Ui.SOFT, 36, 34));
+        JPanel left = transparent(new FlowLayout(FlowLayout.CENTER, 10, 0));
+        left.add(new Ui.Icon(Ui.Icon.MONITOR, Ui.SOFT, 32, 30));
         JPanel texts = transparent(null);
         texts.setLayout(new BoxLayout(texts, BoxLayout.Y_AXIS));
-        ipLabel = Ui.label(L.t("your_ip"), Ui.SOFT, 12f, Font.PLAIN);
-        ipValue = Ui.label("…", Ui.TEXT, 19f, Font.BOLD);
+        ipLabel = Ui.label(L.t("your_ip"), Ui.SOFT, 11f, Font.PLAIN);
+        ipValue = Ui.label("…", Ui.TEXT, 17f, Font.BOLD);
         ipLabel.setAlignmentX(JComponent.LEFT_ALIGNMENT);
         ipValue.setAlignmentX(JComponent.LEFT_ALIGNMENT);
         texts.add(ipLabel);
         texts.add(ipValue);
         left.add(texts);
         flag = new JLabel();
-        country = Ui.label(" ", Ui.TEXT, 16f, Font.PLAIN);
+        country = Ui.label(" ", Ui.TEXT, 14f, Font.PLAIN);
         JPanel right = transparent(new FlowLayout(FlowLayout.CENTER, 10, 0));
         right.add(flag);
         right.add(country);
@@ -314,23 +308,23 @@ public final class Gui {
         g0.gridx = 0; g0.weightx = 0.62; g0.fill = java.awt.GridBagConstraints.NONE;
         ipCard.add(left, g0);
         java.awt.GridBagConstraints g1 = new java.awt.GridBagConstraints();
-        g1.gridx = 1; g1.weightx = 0; g1.fill = java.awt.GridBagConstraints.VERTICAL; g1.insets = new java.awt.Insets(11, 0, 11, 0);
-        ipCard.add(new Ui.VDivider(30), g1);
+        g1.gridx = 1; g1.weightx = 0; g1.fill = java.awt.GridBagConstraints.VERTICAL; g1.insets = new java.awt.Insets(10, 0, 10, 0);
+        ipCard.add(new Ui.VDivider(26), g1);
         java.awt.GridBagConstraints g2c = new java.awt.GridBagConstraints();
         g2c.gridx = 2; g2c.weightx = 0.38; g2c.fill = java.awt.GridBagConstraints.NONE;
         ipCard.add(right, g2c);
-        ipCard.setPreferredSize(new Dimension(410, 62));
-        ipCard.setMaximumSize(new Dimension(410, 62));
+        ipCard.setPreferredSize(new Dimension(380, 56));
+        ipCard.setMaximumSize(new Dimension(380, 56));
         ipCard.setAlignmentX(JComponent.CENTER_ALIGNMENT);
         col.add(ipCard);
-        col.add(Box.createVerticalStrut(8));
+        col.add(Box.createVerticalStrut(6));
 
         // کارت کانفیگ (لیست کشویی)
         Ui.GlowCard profileCard = new Ui.GlowCard(24);
-        profileCard.setBorder(BorderFactory.createEmptyBorder(0, 24, 0, 18));
-        profileCard.setLayout(new BorderLayout(16, 0));
+        profileCard.setBorder(BorderFactory.createEmptyBorder(0, 20, 0, 14));
+        profileCard.setLayout(new BorderLayout(14, 0));
         profileCard.add(new Ui.Icon(Ui.Icon.DOC, Ui.SOFT, 24, 28), BorderLayout.WEST);
-        profileName = Ui.label("—", Ui.TEXT, 15f, Font.PLAIN);
+        profileName = Ui.label("—", Ui.TEXT, 14f, Font.PLAIN);
         profileCard.add(profileName, BorderLayout.CENTER);
         Ui.Chevron down = new Ui.Chevron(Ui.TEXT);
         down.setDir(Ui.Chevron.DOWN);
@@ -339,14 +333,13 @@ public final class Gui {
         profileCard.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override public void mouseClicked(java.awt.event.MouseEvent e) { showProfileMenu(profileCard); }
         });
-        profileCard.setPreferredSize(new Dimension(470, 48));
-        profileCard.setMaximumSize(new Dimension(470, 48));
+        profileCard.setPreferredSize(new Dimension(420, 44));
+        profileCard.setMaximumSize(new Dimension(420, 44));
         profileCard.setAlignmentX(JComponent.CENTER_ALIGNMENT);
         col.add(profileCard);
 
         error = Ui.label(" ", Ui.BAD, 12f, Font.PLAIN);
         error.setAlignmentX(JComponent.CENTER_ALIGNMENT);
-        col.add(Box.createVerticalStrut(2));
         col.add(error);
 
         body.content(col, proto);
@@ -371,11 +364,11 @@ public final class Gui {
         };
         drawer.setOpaque(false);
         JPanel head = transparent(new BorderLayout());
-        head.setBorder(BorderFactory.createEmptyBorder(0, 24, 0, 22));
-        head.setPreferredSize(new Dimension(600, 48));
-        JPanel logTitle = transparent(new FlowLayout(FlowLayout.LEFT, 16, 12));
-        logTitle.add(new Ui.Icon(Ui.Icon.DOC, Ui.SOFT, 24, 26));
-        logTitle.add(Ui.label(L.t("logs"), Ui.SOFT, 16f, Font.PLAIN));
+        head.setBorder(BorderFactory.createEmptyBorder(0, 22, 0, 20));
+        head.setPreferredSize(new Dimension(WIN_W, 44));
+        JPanel logTitle = transparent(new FlowLayout(FlowLayout.LEFT, 14, 10));
+        logTitle.add(new Ui.Icon(Ui.Icon.DOC, Ui.SOFT, 22, 24));
+        logTitle.add(Ui.label(L.t("logs"), Ui.SOFT, 14f, Font.PLAIN));
         head.add(logTitle, BorderLayout.WEST);
         logArrow = new Ui.Chevron(Ui.TEXT);
         logArrow.setDir(logOpen ? Ui.Chevron.DOWN : Ui.Chevron.RIGHT);
@@ -763,10 +756,10 @@ public final class Gui {
             if (col == null) return;
             int w = getWidth(), h = getHeight();
             Dimension c = col.getPreferredSize();
-            int cw = Math.min(w, Math.max(c.width, 480));
+            int cw = Math.min(w, Math.max(c.width, 420));
             col.setBounds((w - cw) / 2, 2, cw, Math.min(h - 2, c.height));
             Dimension p = pill.getPreferredSize();
-            pill.setBounds(18, 8, p.width, p.height);
+            pill.setBounds(14, 6, p.width, p.height);
         }
 
         @Override

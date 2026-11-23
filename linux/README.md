@@ -42,4 +42,4 @@ Java (default-jre)، iproute2، polkit، systemd. برای DNS از systemd-reso
 
 ### پیش‌نمایش بدون X11 (فقط توسعه)
 `test/com/foxssh/desktop/Preview.java` رابط را بدون سرور گرافیکی روی PNG می‌کشد:
-`java -cp <classes> com.foxssh.desktop.Preview <outDir> 600 480 [en]`
+`java -cp <classes> com.foxssh.desktop.Preview <outDir> 500 428 [en]`
