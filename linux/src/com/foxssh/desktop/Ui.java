@@ -332,6 +332,16 @@ final class Ui {
 
         @Override
         protected void paintComponent(Graphics g) {
+            try {
+                paintPower(g);
+            } catch (Throwable t) {
+                t.printStackTrace();
+                g.setColor(ACCENT);
+                g.fillOval(10, 10, getWidth() - 20, getHeight() - 20);
+            }
+        }
+
+        private void paintPower(Graphics g) {
             Graphics2D g2 = (Graphics2D) g.create();
             antialias(g2);
             int w = getWidth(), h = getHeight();

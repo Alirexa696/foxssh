@@ -191,7 +191,7 @@ public final class Gui {
         body.add(top, BorderLayout.NORTH);
 
         // وسط: متن‌ها (چپ) + پاور (راست)
-        JPanel mid = new JPanel(new BorderLayout(8, 0));
+        JPanel mid = new JPanel(new java.awt.GridBagLayout());
         mid.setOpaque(false);
         JPanel col = new JPanel();
         col.setOpaque(false);
@@ -225,7 +225,9 @@ public final class Gui {
         ipRow.setMaximumSize(new Dimension(300, 40));
         col.add(ipRow);
         col.add(Box.createVerticalGlue());
-        mid.add(col, BorderLayout.CENTER);
+        java.awt.GridBagConstraints gc = new java.awt.GridBagConstraints();
+        gc.gridx = 0; gc.weightx = 1; gc.fill = java.awt.GridBagConstraints.BOTH;
+        mid.add(col, gc);
 
         power = new Ui.PowerButton();
         power.setPreferredSize(new Dimension(164, 164));
@@ -233,7 +235,9 @@ public final class Gui {
         JPanel pw = new JPanel(new java.awt.GridBagLayout());
         pw.setOpaque(false);
         pw.add(power);
-        mid.add(pw, BorderLayout.EAST);
+        java.awt.GridBagConstraints gp = new java.awt.GridBagConstraints();
+        gp.gridx = 1; gp.weightx = 0; gp.insets = new java.awt.Insets(0, 8, 0, 0);
+        mid.add(pw, gp);
         body.add(mid, BorderLayout.CENTER);
 
         // پایین: کارت پروفایل (کوچک) + خطا
@@ -312,6 +316,8 @@ public final class Gui {
         frame.setLocationRelativeTo(null);
         reloadProfiles();
         frame.setVisible(true);
+        SwingUtilities.invokeLater(() -> System.err.println("[fox] power=" + power.getBounds() + " showing=" + power.isShowing()
+                + " parent=" + power.getParent().getBounds()));
         poller.scheduleWithFixedDelay(this::poll, 0, 1, TimeUnit.SECONDS);
     }
 
@@ -620,16 +626,34 @@ public final class Gui {
             map = u == null ? null : new ImageIcon(u).getImage();
         }
 
+        private java.awt.image.BufferedImage baked;
+        private int bakedW;
+
+        /** نقشه یک‌بار با شفافیت داخل پیکسل‌ها پخته می‌شود تا موقع نقاشی ترکیب (composite) لازم نباشد. */
+        private void bake(int w) {
+            int h = Math.max(1, w * map.getHeight(null) / map.getWidth(null));
+            java.awt.image.BufferedImage t = new java.awt.image.BufferedImage(w, h, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+            java.awt.Graphics2D g2 = t.createGraphics();
+            g2.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION, java.awt.RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+            g2.drawImage(map, 0, 0, w, h, null);
+            g2.dispose();
+            for (int y = 0; y < h; y++) {
+                for (int x = 0; x < w; x++) {
+                    int px = t.getRGB(x, y);
+                    int al = (int) (((px >>> 24) & 0xFF) * 0.22f);
+                    t.setRGB(x, y, (al << 24) | (px & 0xFFFFFF));
+                }
+            }
+            baked = t;
+            bakedW = w;
+        }
+
         @Override
         protected void paintComponent(java.awt.Graphics g) {
             super.paintComponent(g);
-            if (map == null) return;
-            java.awt.Graphics2D g2 = (java.awt.Graphics2D) g.create();
-            g2.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION, java.awt.RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-            g2.setComposite(java.awt.AlphaComposite.getInstance(java.awt.AlphaComposite.SRC_OVER, 0.22f));
-            int w = getWidth(), h = w * map.getHeight(null) / map.getWidth(null);
-            g2.drawImage(map, 0, Math.max(0, (getHeight() - h) / 2), w, h, null);
-            g2.dispose();
+            if (map == null || getWidth() < 10) return;
+            if (baked == null || bakedW != getWidth()) bake(getWidth());
+            g.drawImage(baked, 0, Math.max(0, (getHeight() - baked.getHeight()) / 2), null);
         }
     }
 
