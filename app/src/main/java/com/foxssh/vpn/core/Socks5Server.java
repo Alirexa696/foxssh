@@ -50,7 +50,14 @@ public final class Socks5Server implements Closeable {
 
     /** روی پورت آزاد 127.0.0.1 شروع می‌کند و پورت را برمی‌گرداند. */
     public int start() throws IOException {
-        server = new ServerSocket(0, 256, InetAddress.getByAddress(new byte[]{127, 0, 0, 1}));
+        return start(0, false);
+    }
+
+    /** پورت مشخص؛ anyHost=true یعنی روی همهٔ آدرس‌ها (برای فوروارد Dynamic با «اتصال از هاست‌های دیگر»). */
+    public int start(int port, boolean anyHost) throws IOException {
+        InetAddress bind = anyHost ? InetAddress.getByAddress(new byte[]{0, 0, 0, 0})
+                : InetAddress.getByAddress(new byte[]{127, 0, 0, 1});
+        server = new ServerSocket(port, 256, bind);
         pool.execute(new Runnable() {
             @Override
             public void run() {
