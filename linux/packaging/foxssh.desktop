@@ -1,7 +1,7 @@
 [Desktop Entry]
 Type=Application
-Name=Fox SSH
-Name[fa]=Fox SSH
+Name=Fox VPN
+Name[fa]=Fox VPN
 Comment=SSH tunnel VPN client
 Exec=foxssh
 Icon=foxssh

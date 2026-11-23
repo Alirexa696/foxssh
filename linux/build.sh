@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ساخت بستهٔ .deb لینوکس. پیش‌نیاز: JDK 11+، dpkg-deb، rsvg-convert، فایل jsch.jar و باینری hev-socks5-tunnel.
+# ساخت بستهٔ .deb لینوکس. پیش‌نیاز: JDK 11+، dpkg-deb، فایل jsch.jar و باینری hev-socks5-tunnel.
 #   JSCH_JAR=/path/jsch-0.2.19.jar HEV_BIN=/path/hev-socks5-tunnel ./linux/build.sh
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -13,9 +13,10 @@ rm -rf "$OUT"; mkdir -p "$OUT/classes" "$OUT/pkg"
 
 echo "== کامپایل"
 javac --release 11 -encoding UTF-8 -nowarn -cp "$JSCH_JAR" -d "$OUT/classes" "$CORE"/*.java src/com/foxssh/desktop/*.java
-rsvg-convert -w 256 -h 256 packaging/foxssh.svg -o "$OUT/logo256.png"
-rsvg-convert -w 48 -h 48 packaging/foxssh.svg -o "$OUT/logo48.png"
-cp "$OUT/logo256.png" "$OUT/classes/logo.png"
+cp assets/logo256.png "$OUT/logo256.png"
+cp assets/logo48.png "$OUT/logo48.png"
+cp assets/logo256.png "$OUT/classes/logo.png"
+mkdir -p "$OUT/classes/fonts" && cp assets/fonts/*.ttf "$OUT/classes/fonts/"
 jar --create --file "$OUT/foxssh.jar" -C "$OUT/classes" .
 
 echo "== ساخت بسته"
