@@ -29,7 +29,7 @@ final class Ui {
             MUTED = new Color(0x8895B3), OK = new Color(0x2ECC71), BAD = new Color(0xFF5C5C),
             DARK_BTN = new Color(0x22324F);
 
-    private static Font regular, bold, medium;
+    private static Font regular, bold, medium, pRegular, pMedium, pSemi, pBold;
 
     private Ui() {}
 
@@ -52,6 +52,48 @@ final class Ui {
         }
         Font base = (style & Font.BOLD) != 0 ? bold : regular;
         return base.deriveFont(size);
+    }
+
+    private static Font loadLatin(String n, Font fallback) {
+        Font f = load("/fonts/Poppins-" + n + ".ttf");
+        return f != null ? f : fallback;
+    }
+
+    /** فونت لاتین (انگلیسی، IP، اعداد): Poppins. */
+    static synchronized Font latin(float size, int style) {
+        font(size, Font.PLAIN);
+        if (pRegular == null) {
+            pRegular = loadLatin("Regular", regular);
+            pMedium = loadLatin("Medium", pRegular);
+            pSemi = loadLatin("SemiBold", pRegular);
+            pBold = loadLatin("Bold", pSemi);
+        }
+        return ((style & Font.BOLD) != 0 ? pSemi : pRegular).deriveFont(size);
+    }
+
+    static Font latinBold(float size) {
+        latin(size, Font.PLAIN);
+        return pBold.deriveFont(size);
+    }
+
+    static boolean hasArabic(String s) {
+        if (s == null) return false;
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (c >= 0x0600 && c <= 0x06FF || c >= 0xFB50 && c <= 0xFDFF || c >= 0xFE70 && c <= 0xFEFF || c == 0x200C) return true;
+        }
+        return false;
+    }
+
+    /** برای متن فارسی وزیرمتن، برای بقیه Poppins. */
+    static Font pick(String text, float size, int style) {
+        return hasArabic(text) ? font(size, style) : latin(size, style);
+    }
+
+    static void setText(JLabel l, String text) {
+        Font f = l.getFont();
+        l.setText(text);
+        l.setFont(pick(text, f.getSize2D(), f.isBold() ? Font.BOLD : Font.PLAIN));
     }
 
     static Font mediumFont(float size) {
@@ -80,7 +122,7 @@ final class Ui {
             setFocusPainted(false);
             setOpaque(false);
             setForeground(Color.WHITE);
-            setFont(font(14f, Font.BOLD));
+            setFont(pick(text, 14f, Font.BOLD));
             setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
             setBorder(BorderFactory.createEmptyBorder(4, 6, 4, 6));
         }
@@ -130,16 +172,17 @@ final class Ui {
         }
     }
 
-    /** فلش کوچک بالا/پایین برای کشوی لاگ. */
+    /** فلش کوچک: بالا / پایین / راست. */
     static final class Chevron extends JComponent {
-        private boolean up = true;
+        static final int UP = 0, DOWN = 1, RIGHT = 2;
+        private int dir = UP;
 
         Chevron() {
-            setPreferredSize(new Dimension(24, 20));
+            setPreferredSize(new Dimension(28, 24));
         }
 
-        void setUp(boolean u) {
-            up = u;
+        void setDir(int d) {
+            dir = d;
             repaint();
         }
 
@@ -148,11 +191,56 @@ final class Ui {
             Graphics2D g2 = (Graphics2D) g.create();
             antialias(g2);
             g2.setColor(MUTED);
-            g2.setStroke(new BasicStroke(2.2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            g2.setStroke(new BasicStroke(2.4f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
             int cx = getWidth() / 2, cy = getHeight() / 2;
-            int d = up ? 4 : -4;
-            g2.draw(new Line2D.Float(cx - 6, cy + d, cx, cy - d));
-            g2.draw(new Line2D.Float(cx, cy - d, cx + 6, cy + d));
+            if (dir == RIGHT) {
+                g2.draw(new Line2D.Float(cx - 3, cy - 7, cx + 3, cy));
+                g2.draw(new Line2D.Float(cx + 3, cy, cx - 3, cy + 7));
+            } else {
+                int d = dir == UP ? 4 : -4;
+                g2.draw(new Line2D.Float(cx - 7, cy + d, cx, cy - d));
+                g2.draw(new Line2D.Float(cx, cy - d, cx + 7, cy + d));
+            }
+            g2.dispose();
+        }
+    }
+
+    /** سپر کوچک؛ با تیک وقتی فعال است. */
+    static final class Shield extends JComponent {
+        private boolean on;
+
+        Shield() {
+            setPreferredSize(new Dimension(30, 34));
+        }
+
+        void setOn(boolean v) {
+            if (v != on) {
+                on = v;
+                repaint();
+            }
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            antialias(g2);
+            int w = getWidth(), h = getHeight();
+            float x0 = w / 2f - 11, x1 = w / 2f + 11, y0 = 4, y1 = h - 4;
+            java.awt.geom.Path2D.Float p = new java.awt.geom.Path2D.Float();
+            p.moveTo(w / 2f, y0);
+            p.lineTo(x1, y0 + 4);
+            p.lineTo(x1, y0 + 14);
+            p.quadTo(x1, y1 - 3, w / 2f, y1);
+            p.quadTo(x0, y1 - 3, x0, y0 + 14);
+            p.lineTo(x0, y0 + 4);
+            p.closePath();
+            g2.setColor(on ? OK : MUTED);
+            g2.setStroke(new BasicStroke(2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            g2.draw(p);
+            if (on) {
+                g2.draw(new Line2D.Float(w / 2f - 5, h / 2f + 1, w / 2f - 1, h / 2f + 5));
+                g2.draw(new Line2D.Float(w / 2f - 1, h / 2f + 5, w / 2f + 6, h / 2f - 3));
+            }
             g2.dispose();
         }
     }
@@ -183,7 +271,7 @@ final class Ui {
 
         Pill(String t) {
             super(t, CENTER);
-            setFont(font(12f, Font.BOLD));
+            setFont(pick(t, 12f, Font.BOLD));
             setForeground(Color.WHITE);
             setBorder(BorderFactory.createEmptyBorder(3, 12, 3, 12));
             setOpaque(false);
@@ -320,7 +408,7 @@ final class Ui {
     static JLabel label(String t, Color c, float size, int style) {
         JLabel l = new JLabel(t);
         l.setForeground(c);
-        l.setFont(font(size, style));
+        l.setFont(pick(t, size, style));
         return l;
     }
 }

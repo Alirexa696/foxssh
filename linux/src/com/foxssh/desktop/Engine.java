@@ -42,6 +42,14 @@ public final class Engine {
     private volatile int socksPort;
     private volatile String state = "connecting", error = "", banner = "";
     private volatile long since;
+    private boolean fa = true;
+    private final List<Tunnel> tunnelList = new ArrayList<>();
+    private boolean anyLocal, anyRemote;
+    private final List<Socks5Server> dynServers = new ArrayList<>();
+
+    private String m(String f, String e) {
+        return fa ? f : e;
+    }
 
     private Engine(Path config, Path runDir, Path stateDir, Path sharedDir) {
         this.configFile = config;
@@ -93,7 +101,7 @@ public final class Engine {
         try (java.io.Reader r = Files.newBufferedReader(configFile, StandardCharsets.UTF_8)) {
             cfg.load(r);
         } catch (IOException e) {
-            return fail("فایل تنظیمات خوانده نشد: " + e.getMessage());
+            return fail(m("فایل تنظیمات خوانده نشد: ", "Could not read config: ") + e.getMessage());
         }
         final String host = cfg.getProperty("host", "").trim();
         final int port = toInt(cfg.getProperty("port"), 22);
@@ -101,6 +109,10 @@ public final class Engine {
         final String pass = cfg.getProperty("pass", "");
         int udpgw = toInt(cfg.getProperty("udpgw"), 7300);
         boolean bypass = !"false".equals(cfg.getProperty("bypass", "true"));
+        fa = !"en".equals(cfg.getProperty("lang", "fa"));
+        tunnelList.addAll(Tunnel.parseList(cfg.getProperty("tunnels", "")));
+        anyLocal = "true".equals(cfg.getProperty("anyLocal"));
+        anyRemote = "true".equals(cfg.getProperty("anyRemote"));
         List<String> manual = new ArrayList<>();
         for (String s : cfg.getProperty("manual", "").split(";")) if (!s.trim().isEmpty()) manual.add(s.trim());
         // رمز را از حافظهٔ فایل پاک می‌کنیم (فقط در RAM می‌ماند)
@@ -112,8 +124,8 @@ public final class Engine {
         Socks5Server socks = null;
         UdpGwMux mux = null;
         try {
-            if (host.isEmpty() || user.isEmpty()) return fail("اطلاعات سرور ناقص است");
-            log("اتصال به " + host + ":" + port + " با کاربر " + user);
+            if (host.isEmpty() || user.isEmpty()) return fail(m("اطلاعات سرور ناقص است", "Server details are incomplete"));
+            log(m("اتصال به ", "Connecting to ") + host + ":" + port + m(" با کاربر ", " as ") + user);
             // تبدیل نام به IP «قبل» از تغییر مسیرها؛ برای اتصال مجدد هم از همین IP استفاده می‌شود
             final String ip = InetAddress.getByName(host).getHostAddress();
             writeStatus();
@@ -123,15 +135,15 @@ public final class Engine {
             rules.setIranList(IranList.load(stateDir, sharedDir));
             rules.setManualEntries(manual);
             rules.resolveDomains();
-            log("لیست ایران: " + rules.iranCount() + " رنج، بایپس " + (bypass ? "روشن" : "خاموش"));
+            log(m("لیست ایران: ", "Iran list: ") + rules.iranCount() + m(" رنج، بایپس ", " ranges, bypass ") + (bypass ? m("روشن", "on") : m("خاموش", "off")));
             if (IranList.needsUpdate(stateDir)) {
                 Thread t = new Thread(() -> {
                     try {
                         int n = IranList.update(stateDir);
                         rules.setIranList(IranList.load(stateDir, sharedDir));
-                        log("لیست ایران به‌روز شد: " + n + " رنج");
+                        log(m("لیست ایران به‌روز شد: ", "Iran list updated: ") + n);
                     } catch (IOException ex) {
-                        log("به‌روزرسانی لیست ایران نشد: " + ex.getMessage());
+                        log(m("به‌روزرسانی لیست ایران نشد: ", "Iran list update failed: ") + ex.getMessage());
                     }
                 }, "fox-iran-update");
                 t.setDaemon(true);
@@ -143,7 +155,8 @@ public final class Engine {
             t.connect(ip, host + ":" + port, port, user, pass);
             tunnel = t;
             banner = t.banner();
-            log("SSH وصل شد؛ طول بنر: " + banner.length());
+            log(m("SSH وصل شد؛ طول بنر: ", "SSH connected; banner length: ") + banner.length());
+            applyForwards(t);
 
             OpenerSource src = () -> {
                 DSshTunnel c = tunnel;
@@ -152,14 +165,15 @@ public final class Engine {
             mux = new UdpGwMux(src, udpgw, 200);
             socks = new Socks5Server(src, rules, mux);
             socksPort = socks.start();
-            log("SOCKS محلی روی 127.0.0.1:" + socksPort + "، udpgw=" + udpgw);
+            log(m("SOCKS محلی روی 127.0.0.1:", "Local SOCKS on 127.0.0.1:") + socksPort + ", udpgw=" + udpgw);
+            startDynamic(src);
             writeStatus();
 
             // منتظر می‌مانیم اسکریپت راه‌انداز تونل و مسیرها را بسازد
             Path up = runDir.resolve("vpn-up");
             long deadline = System.currentTimeMillis() + 60000;
             while (running && !Files.exists(up)) {
-                if (System.currentTimeMillis() > deadline) return fail("راه‌اندازی تونل سیستم زمان‌بر شد");
+                if (System.currentTimeMillis() > deadline) return fail(m("راه‌اندازی تونل سیستم زمان‌بر شد", "System tunnel setup timed out"));
                 Thread.sleep(200);
             }
             since = System.currentTimeMillis();
@@ -174,11 +188,12 @@ public final class Engine {
         } catch (Throwable e) {
             String m = e.getMessage() == null ? e.toString() : e.getMessage();
             if (m.contains("HostKey has been changed")) {
-                m = "کلید سرور تغییر کرده است. اگر سرور را دوباره نصب کرده‌اید، در تنظیمات «پاک‌کردن کلیدهای ذخیره‌شده» را بزنید.";
+                m = m("کلید سرور تغییر کرده است. اگر سرور را دوباره نصب کرده‌اید، در تنظیمات «پاک‌کردن کلیدهای ذخیره‌شده» را بزنید.", "The server key has changed. If you reinstalled the server, use Settings → Forget saved server keys.");
             }
             return fail(m);
         } finally {
             if (socks != null) socks.close();
+            for (Socks5Server d : dynServers) d.close();
             if (mux != null) mux.close();
             DSshTunnel t = tunnel;
             tunnel = null;
@@ -209,10 +224,11 @@ public final class Engine {
                 n.connect(ip, host + ":" + port, port, user, pass);
                 tunnel = n;
                 if (cur != null) cur.close();
-                log("اتصال SSH دوباره برقرار شد");
+                log(m("اتصال SSH دوباره برقرار شد", "SSH reconnected"));
+                applyForwards(n);
             } catch (Exception e) {
                 n.close();
-                log("اتصال مجدد ناموفق: " + e.getMessage());
+                log(m("اتصال مجدد ناموفق: ", "Reconnect failed: ") + e.getMessage());
                 for (int i = 0; i < backoff && running; i++) Thread.sleep(1000);
                 backoff = Math.min(backoff * 2, 30);
             }
@@ -233,7 +249,7 @@ public final class Engine {
                 byte[] r = new byte[10];
                 in.readFully(r);
                 if (r[1] != 0) {
-                    log("تست تونل ✗ (کد SOCKS " + r[1] + ") — AllowTcpForwarding سرور را بررسی کنید");
+                    log(m("تست تونل ✗ (کد SOCKS ", "Tunnel test ✗ (SOCKS code ") + r[1] + m(") — AllowTcpForwarding سرور را بررسی کنید", ") — check AllowTcpForwarding on the server"));
                     return;
                 }
                 o.write("HEAD / HTTP/1.0\r\nHost: 1.1.1.1\r\n\r\n".getBytes(StandardCharsets.US_ASCII));
@@ -241,19 +257,53 @@ public final class Engine {
                 StringBuilder line = new StringBuilder();
                 int c;
                 while ((c = in.read()) != -1 && c != '\n' && line.length() < 100) line.append((char) c);
-                log("تست تونل ✓ پاسخ 1.1.1.1: " + line.toString().trim());
+                log(m("تست تونل ✓ پاسخ 1.1.1.1: ", "Tunnel test ✓ reply from 1.1.1.1: ") + line.toString().trim());
             } catch (Exception e) {
-                log("تست تونل ✗ " + e);
+                log(m("تست تونل ✗ ", "Tunnel test ✗ ") + e);
             }
         }, "fox-selftest");
         th.setDaemon(true);
         th.start();
     }
 
+    /** فوروارد Local/Remote روی نشست فعلی (با هر اتصال مجدد دوباره اعمال می‌شود). */
+    private void applyForwards(DSshTunnel t) {
+        for (Tunnel f : tunnelList) {
+            try {
+                if (f.type == 'L') {
+                    t.forwardLocal(anyLocal ? "0.0.0.0" : "127.0.0.1", f.srcPort, f.destHost(), f.destPort());
+                    log("-L " + f.srcPort + " → " + f.dest + (anyLocal ? " (0.0.0.0)" : ""));
+                } else if (f.type == 'R') {
+                    t.forwardRemote(anyRemote ? "0.0.0.0" : "127.0.0.1", f.srcPort, f.destHost(), f.destPort());
+                    log("-R " + f.srcPort + " → " + f.dest);
+                }
+            } catch (Exception e) {
+                log(m("فوروارد ناموفق ", "Forward failed ") + f + ": " + e.getMessage());
+            }
+        }
+    }
+
+    /** -D: سرور SOCKS روی پورت دلخواه که همهٔ ترافیکش از SSH می‌رود. */
+    private void startDynamic(OpenerSource src) {
+        for (Tunnel f : tunnelList) {
+            if (f.type != 'D') continue;
+            try {
+                BypassRules off = new BypassRules();
+                off.setEnabled(false);
+                Socks5Server d = new Socks5Server(src, off, null);
+                d.start(f.srcPort, anyLocal);
+                dynServers.add(d);
+                log("-D " + f.srcPort + (anyLocal ? " (0.0.0.0)" : ""));
+            } catch (IOException e) {
+                log(m("فوروارد ناموفق ", "Forward failed ") + f + ": " + e.getMessage());
+            }
+        }
+    }
+
     private int fail(String msg) {
         error = msg;
         state = "stopped";
-        log("خطا: " + msg);
+        log(m("خطا: ", "Error: ") + msg);
         writeStatus();
         return 1;
     }

@@ -61,6 +61,20 @@ final class DSshTunnel implements ChannelOpener {
         session = s;
     }
 
+    /** -L: پورت محلی → host:port از سمت سرور. */
+    void forwardLocal(String bind, int lport, String host, int rport) throws JSchException {
+        Session s = session;
+        if (s == null) throw new JSchException("SSH قطع است");
+        s.setPortForwardingL(bind, lport, host, rport);
+    }
+
+    /** -R: پورت روی سرور → host:port از سمت ما. */
+    void forwardRemote(String bind, int rport, String host, int lport) throws JSchException {
+        Session s = session;
+        if (s == null) throw new JSchException("SSH قطع است");
+        s.setPortForwardingR(bind, rport, host, lport);
+    }
+
     void close() {
         Session s = session;
         session = null;

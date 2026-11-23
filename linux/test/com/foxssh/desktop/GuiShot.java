@@ -50,7 +50,7 @@ public final class GuiShot {
         SwingUtilities.invokeAndWait(() -> g[0].openLogForTest());
         Thread.sleep(1200);
         shot(g[0], outDir + "/log.png");
-        for (String w : new String[]{"profiles", "edit", "settings"}) {
+        for (String w : new String[]{"profiles", "edit", "settings", "tunnels"}) {
             final javax.swing.JDialog[] d = new javax.swing.JDialog[1];
             SwingUtilities.invokeAndWait(() -> {
                 d[0] = g[0].dialogForTest(w);
@@ -67,6 +67,27 @@ public final class GuiShot {
                 d[0].dispose();
             });
             ImageIO.write(im[0], "png", new File(outDir + "/dlg-" + w + ".png"));
+        }
+        SwingUtilities.invokeAndWait(() -> g[0].switchLang("en"));
+        Thread.sleep(1500);
+        shot(g[0], outDir + "/on-en.png");
+        for (String w : new String[]{"settings", "tunnels"}) {
+            final javax.swing.JDialog[] d = new javax.swing.JDialog[1];
+            SwingUtilities.invokeAndWait(() -> {
+                d[0] = g[0].dialogForTest(w);
+                d[0].setVisible(true);
+            });
+            Thread.sleep(800);
+            final BufferedImage[] im = new BufferedImage[1];
+            SwingUtilities.invokeAndWait(() -> {
+                java.awt.Container c = d[0].getContentPane();
+                im[0] = new BufferedImage(c.getWidth(), c.getHeight(), BufferedImage.TYPE_INT_RGB);
+                Graphics2D g2 = im[0].createGraphics();
+                c.paint(g2);
+                g2.dispose();
+                d[0].dispose();
+            });
+            ImageIO.write(im[0], "png", new File(outDir + "/dlg-" + w + "-en.png"));
         }
         System.exit(0);
     }

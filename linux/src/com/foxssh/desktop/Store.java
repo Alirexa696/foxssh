@@ -20,6 +20,8 @@ final class Store {
     static final class Profile {
         String id = "", name = "", host = "", user = "", pass = "";
         int port = 22, udpgw = 7300;
+        String tunnels = "";
+        boolean anyLocal, anyRemote;
 
         String title() { return name.isEmpty() ? host : name; }
     }
@@ -63,6 +65,9 @@ final class Store {
             f.pass = p.getProperty(k + "pass", "");
             f.port = toInt(p.getProperty(k + "port"), 22);
             f.udpgw = toInt(p.getProperty(k + "udpgw"), 7300);
+            f.tunnels = p.getProperty(k + "tunnels", "");
+            f.anyLocal = "true".equals(p.getProperty(k + "anyLocal"));
+            f.anyRemote = "true".equals(p.getProperty(k + "anyRemote"));
             out.add(f);
         }
         return out;
@@ -91,6 +96,9 @@ final class Store {
         p.setProperty(k + "pass", f.pass);
         p.setProperty(k + "port", String.valueOf(f.port));
         p.setProperty(k + "udpgw", String.valueOf(f.udpgw));
+        p.setProperty(k + "tunnels", f.tunnels);
+        p.setProperty(k + "anyLocal", String.valueOf(f.anyLocal));
+        p.setProperty(k + "anyRemote", String.valueOf(f.anyRemote));
         if (isNew) {
             StringBuilder ids = new StringBuilder();
             for (Profile o : l) ids.append(o.id).append(',');
@@ -109,13 +117,20 @@ final class Store {
                 ids.append(o.id);
             }
         }
-        for (String f : new String[]{"name", "host", "user", "pass", "port", "udpgw"}) p.remove("p." + id + "." + f);
+        for (String f : new String[]{"name", "host", "user", "pass", "port", "udpgw", "tunnels", "anyLocal", "anyRemote"}) p.remove("p." + id + "." + f);
         p.setProperty("ids", ids.toString());
         if (p.getProperty("selected", "").equals(id)) p.remove("selected");
         save();
     }
 
     // ───── تنظیمات ─────
+
+    String lang() { return p.getProperty("lang", "fa"); }
+
+    synchronized void setLang(String l) {
+        p.setProperty("lang", l);
+        save();
+    }
 
     String dns1() { return p.getProperty("dns1", "1.1.1.1"); }
     String dns2() { return p.getProperty("dns2", "8.8.8.8"); }
@@ -165,6 +180,10 @@ final class Store {
         c.setProperty("dns2", dns2());
         c.setProperty("bypass", String.valueOf(bypass()));
         c.setProperty("manual", String.join(";", manual()));
+        c.setProperty("tunnels", f.tunnels);
+        c.setProperty("anyLocal", String.valueOf(f.anyLocal));
+        c.setProperty("anyRemote", String.valueOf(f.anyRemote));
+        c.setProperty("lang", lang());
         java.io.StringWriter w = new java.io.StringWriter();
         try {
             c.store(w, null);

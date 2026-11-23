@@ -5,7 +5,10 @@ import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.DefaultListModel;
 import javax.swing.ImageIcon;
+import javax.swing.ButtonGroup;
 import javax.swing.JCheckBox;
+import javax.swing.JRadioButton;
+import javax.swing.JSeparator;
 import javax.swing.JComponent;
 import javax.swing.JDialog;
 import javax.swing.JFrame;
@@ -24,6 +27,8 @@ import javax.swing.UIManager;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.ComponentOrientation;
+import java.awt.Dialog;
+import java.awt.Window;
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
@@ -53,7 +58,7 @@ import java.util.function.Supplier;
 public final class Gui {
     private static final String CTL = "/usr/lib/foxssh/foxssh-ctl";
     private static final Path RUN = Paths.get("/run/foxssh");
-    private static final int LOG_H = 210;
+    private static final int LOG_H = 200;
 
     // نقاط تزریق برای تست ظاهر (در حالت عادی دست نمی‌خورند)
     static BooleanSupplier activeFn = Gui::systemctlActive;
@@ -75,6 +80,7 @@ public final class Gui {
     private JFrame frame;
     private Ui.PowerButton power;
     private Ui.Pill proto;
+    private Ui.Shield shield;
     private JLabel status, stats, profileName, ipLabel, ipValue, error;
     private Ui.Chevron logArrow;
     private JTextArea logArea;
@@ -121,10 +127,7 @@ public final class Gui {
             }
         } catch (Exception ignored) {
         }
-        Font f = Ui.font(14f, Font.PLAIN);
-        for (Object k : java.util.Collections.list(UIManager.getDefaults().keys())) {
-            if (k.toString().endsWith(".font")) UIManager.put(k, new javax.swing.plaf.FontUIResource(f));
-        }
+        applyFonts();
         UIManager.put("OptionPane.background", Ui.CARD);
         UIManager.put("Panel.background", Ui.CARD);
         UIManager.put("OptionPane.messageForeground", Ui.TEXT);
@@ -134,106 +137,132 @@ public final class Gui {
         UIManager.put("MenuItem.foreground", Ui.TEXT);
     }
 
+    /** فونت پیش‌فرض بر اساس زبان: فارسی = وزیرمتن، انگلیسی = Poppins. */
+    static void applyFonts() {
+        Font f = L.isFa() ? Ui.font(14f, Font.PLAIN) : Ui.latin(14f, Font.PLAIN);
+        for (Object k : java.util.Collections.list(UIManager.getDefaults().keys())) {
+            if (k.toString().endsWith(".font")) UIManager.put(k, new javax.swing.plaf.FontUIResource(f));
+        }
+    }
+
+    static void orient(java.awt.Component c) {
+        c.applyComponentOrientation(L.isFa() ? ComponentOrientation.RIGHT_TO_LEFT : ComponentOrientation.LEFT_TO_RIGHT);
+    }
+
+    private static final Color LINE = new Color(0x2B3A5C);
+
     JPanel buildMain() {
         JPanel root = new JPanel(new BorderLayout());
         root.setBackground(Ui.BG);
 
-        // ── نوار بالا: همبرگری (چپ) + لوگو و عنوان (وسط)
-        JPanel bar = new JPanel(new BorderLayout());
+        // ── نوار بالا: همبرگری + «Fox VPN» + لوگو
+        JPanel bar = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
         bar.setBackground(Ui.BAR);
-        bar.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+        bar.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 0, 1, 0, LINE), BorderFactory.createEmptyBorder(6, 8, 6, 8)));
         Ui.Hamburger burger = new Ui.Hamburger();
         burger.addActionListener(e -> showMenu(burger));
-        bar.add(burger, BorderLayout.WEST);
-        JPanel title = new JPanel(new FlowLayout(FlowLayout.CENTER, 8, 2));
-        title.setOpaque(false);
-        title.setComponentOrientation(ComponentOrientation.LEFT_TO_RIGHT);
+        bar.add(burger);
+        bar.add(Box.createHorizontalStrut(10));
+        JLabel brand = Ui.label("Fox VPN", Ui.TEXT, 22f, Font.BOLD);
+        brand.setFont(Ui.latinBold(22f));
+        bar.add(brand);
         URL logo = Gui.class.getResource("/logo.png");
         if (logo != null) {
-            title.add(new JLabel(new ImageIcon(new ImageIcon(logo).getImage().getScaledInstance(34, 34, Image.SCALE_SMOOTH))));
+            bar.add(new JLabel(new ImageIcon(new ImageIcon(logo).getImage().getScaledInstance(40, 40, Image.SCALE_SMOOTH))));
         }
-        title.add(Ui.label("Fox VPN", Ui.TEXT, 21f, Font.BOLD));
-        bar.add(title, BorderLayout.CENTER);
-        bar.add(Box.createRigidArea(new Dimension(48, 44)), BorderLayout.EAST);
         root.add(bar, BorderLayout.NORTH);
 
         // ── بدنه
-        JPanel body = new JPanel();
-        body.setLayout(new BoxLayout(body, BoxLayout.Y_AXIS));
+        JPanel body = new JPanel(new BorderLayout(0, 8));
         body.setBackground(Ui.BG);
-        body.setBorder(BorderFactory.createEmptyBorder(14, 22, 10, 22));
+        body.setBorder(BorderFactory.createEmptyBorder(14, 22, 12, 22));
+
+        // ردیف پروتکل
+        JPanel top = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 0));
+        top.setOpaque(false);
+        proto = new Ui.Pill("SSH  |  22");
+        shield = new Ui.Shield();
+        top.add(proto);
+        top.add(shield);
+        body.add(top, BorderLayout.NORTH);
+
+        // وسط: متن‌ها (چپ) + پاور (راست)
+        JPanel mid = new JPanel(new BorderLayout(8, 0));
+        mid.setOpaque(false);
+        JPanel col = new JPanel();
+        col.setOpaque(false);
+        col.setLayout(new BoxLayout(col, BoxLayout.Y_AXIS));
+        status = Ui.label(L.t("disconnected"), Ui.MUTED, 26f, Font.BOLD);
+        stats = Ui.label(" ", Ui.MUTED, 12f, Font.PLAIN);
+        stats.setFont(Ui.font(12f, Font.PLAIN));
+        ipLabel = Ui.label(L.t("your_ip"), Ui.MUTED, 13f, Font.PLAIN);
+        ipValue = Ui.label("…", Ui.TEXT, 24f, Font.BOLD);
+        JSeparator sep = new JSeparator();
+        sep.setForeground(LINE);
+        sep.setBackground(LINE);
+        sep.setMaximumSize(new Dimension(230, 2));
+        sep.setAlignmentX(JComponent.LEFT_ALIGNMENT);
+        for (JComponent c : new JComponent[]{status, stats, ipLabel, ipValue}) c.setAlignmentX(JComponent.LEFT_ALIGNMENT);
+        col.add(Box.createVerticalGlue());
+        col.add(status);
+        col.add(Box.createVerticalStrut(2));
+        col.add(stats);
+        col.add(Box.createVerticalStrut(12));
+        col.add(sep);
+        col.add(Box.createVerticalStrut(12));
+        col.add(ipLabel);
+        col.add(ipValue);
+        col.add(Box.createVerticalGlue());
+        mid.add(col, BorderLayout.CENTER);
 
         power = new Ui.PowerButton();
-        power.setAlignmentX(JComponent.CENTER_ALIGNMENT);
+        power.setPreferredSize(new Dimension(164, 164));
         power.addActionListener(e -> onPower());
-        body.add(power);
+        JPanel pw = new JPanel(new java.awt.GridBagLayout());
+        pw.setOpaque(false);
+        pw.add(power);
+        mid.add(pw, BorderLayout.EAST);
+        body.add(mid, BorderLayout.CENTER);
 
-        status = Ui.label("قطع", Ui.MUTED, 22f, Font.BOLD);
-        status.setAlignmentX(JComponent.CENTER_ALIGNMENT);
-        body.add(status);
-        stats = Ui.label(" ", Ui.MUTED, 12f, Font.PLAIN);
-        stats.setAlignmentX(JComponent.CENTER_ALIGNMENT);
-        body.add(Box.createVerticalStrut(2));
-        body.add(stats);
-        body.add(Box.createVerticalStrut(16));
-
-        // کارت پروفایل: پروتکل + نام کانفیگ + فلش
+        // پایین: کارت پروفایل (کوچک) + خطا
+        JPanel south = new JPanel();
+        south.setOpaque(false);
+        south.setLayout(new BoxLayout(south, BoxLayout.Y_AXIS));
         Ui.Card profileCard = new Ui.Card();
-        profileCard.setLayout(new BorderLayout(10, 0));
-        proto = new Ui.Pill("SSH");
-        profileName = Ui.label("—", Ui.TEXT, 16f, Font.BOLD);
-        JLabel chev = Ui.label("‹", Ui.MUTED, 22f, Font.PLAIN);
-        JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
-        left.setOpaque(false);
-        left.add(chev);
-        JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
-        right.setOpaque(false);
-        right.add(profileName);
-        right.add(proto);
-        profileCard.add(right, BorderLayout.EAST);
-        profileCard.add(left, BorderLayout.WEST);
+        profileCard.setBorder(BorderFactory.createEmptyBorder(0, 14, 0, 10));
+        profileCard.setLayout(new BorderLayout(8, 0));
+        profileName = Ui.label("—", Ui.TEXT, 14f, Font.PLAIN);
+        profileCard.add(profileName, BorderLayout.CENTER);
+        Ui.Chevron down = new Ui.Chevron();
+        down.setDir(Ui.Chevron.DOWN);
+        profileCard.add(down, BorderLayout.EAST);
         profileCard.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         profileCard.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override public void mouseClicked(java.awt.event.MouseEvent e) { showProfileMenu(profileCard); }
         });
-        fixCard(profileCard, 58);
-        body.add(profileCard);
-        body.add(Box.createVerticalStrut(10));
-
-        // کارت IP
-        Ui.Card ipCard = new Ui.Card();
-        ipCard.setLayout(new BorderLayout());
-        ipLabel = Ui.label("آی‌پی شما", Ui.MUTED, 12f, Font.PLAIN);
-        ipValue = Ui.label("…", Ui.TEXT, 18f, Font.BOLD);
-        ipValue.setFont(Ui.font(18f, Font.BOLD));
-        JPanel col = new JPanel();
-        col.setOpaque(false);
-        col.setLayout(new BoxLayout(col, BoxLayout.Y_AXIS));
-        ipLabel.setAlignmentX(JComponent.RIGHT_ALIGNMENT);
-        ipValue.setAlignmentX(JComponent.RIGHT_ALIGNMENT);
-        col.add(ipLabel);
-        col.add(ipValue);
-        ipCard.add(col, BorderLayout.EAST);
-        fixCard(ipCard, 70);
-        body.add(ipCard);
-
+        profileCard.setPreferredSize(new Dimension(300, 38));
+        profileCard.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
+        profileCard.setAlignmentX(JComponent.LEFT_ALIGNMENT);
+        south.add(profileCard);
         error = Ui.label(" ", Ui.BAD, 12f, Font.PLAIN);
-        error.setAlignmentX(JComponent.CENTER_ALIGNMENT);
-        error.setHorizontalAlignment(JLabel.CENTER);
-        body.add(Box.createVerticalStrut(10));
-        body.add(error);
-        body.add(Box.createVerticalGlue());
+        error.setAlignmentX(JComponent.LEFT_ALIGNMENT);
+        south.add(Box.createVerticalStrut(6));
+        south.add(error);
+        body.add(south, BorderLayout.SOUTH);
         root.add(body, BorderLayout.CENTER);
 
         // ── کشوی لاگ
         JPanel drawer = new JPanel(new BorderLayout());
         drawer.setBackground(Ui.BAR);
+        drawer.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, LINE));
         JPanel head = new JPanel(new BorderLayout());
         head.setOpaque(false);
-        head.setBorder(BorderFactory.createEmptyBorder(10, 18, 10, 18));
-        head.add(Ui.label("لاگ‌ها", Ui.TEXT, 14f, Font.BOLD), BorderLayout.EAST);
+        head.setBorder(BorderFactory.createEmptyBorder(10, 22, 10, 18));
+        head.add(Ui.label(L.t("logs"), Ui.TEXT, 14f, Font.PLAIN), BorderLayout.WEST);
         logArrow = new Ui.Chevron();
-        head.add(logArrow, BorderLayout.WEST);
+        logArrow.setDir(logOpen ? Ui.Chevron.DOWN : Ui.Chevron.RIGHT);
+        head.add(logArrow, BorderLayout.EAST);
         head.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         head.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override public void mouseClicked(java.awt.event.MouseEvent e) { toggleLog(); }
@@ -249,20 +278,13 @@ public final class Gui {
         logScroll = new JScrollPane(logArea);
         logScroll.setBorder(BorderFactory.createEmptyBorder());
         logScroll.setPreferredSize(new Dimension(100, LOG_H));
-        logScroll.setVisible(false);
+        logScroll.setVisible(logOpen);
         drawer.add(logScroll, BorderLayout.CENTER);
         root.add(drawer, BorderLayout.SOUTH);
 
-        root.applyComponentOrientation(ComponentOrientation.RIGHT_TO_LEFT);
-        ipValue.setComponentOrientation(ComponentOrientation.LEFT_TO_RIGHT);
+        root.applyComponentOrientation(ComponentOrientation.LEFT_TO_RIGHT);
+        lastLogText = "";
         return root;
-    }
-
-    private static void fixCard(JComponent c, int h) {
-        c.setPreferredSize(new Dimension(300, h));
-        c.setMaximumSize(new Dimension(Integer.MAX_VALUE, h));
-        c.setMinimumSize(new Dimension(100, h));
-        c.setAlignmentX(JComponent.CENTER_ALIGNMENT);
     }
 
     void show() {
@@ -271,9 +293,11 @@ public final class Gui {
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         URL logo = Gui.class.getResource("/logo.png");
         if (logo != null) frame.setIconImage(new ImageIcon(logo).getImage());
+        L.setFa(!"en".equals(store.lang()));
+        applyFonts();
         frame.setContentPane(buildMain());
-        frame.setMinimumSize(new Dimension(360, 540));
-        frame.setSize(380, 600);
+        frame.setResizable(false);
+        frame.setSize(470, 440);
         frame.setLocationRelativeTo(null);
         reloadProfiles();
         frame.setVisible(true);
@@ -282,12 +306,34 @@ public final class Gui {
 
     JFrame frame() { return frame; }
 
+    /** تغییر زبان: ذخیره و ساخت دوبارهٔ رابط. */
+    void switchLang(String lang) {
+        store.setLang(lang);
+        L.setFa(!"en".equals(lang));
+        applyFonts();
+        rebuild();
+    }
+
+    private void rebuild() {
+        frame.setContentPane(buildMain());
+        frame.setSize(470, 440 + (logOpen ? LOG_H : 0));
+        frame.revalidate();
+        frame.repaint();
+        reloadProfiles();
+        lastEngineError = "";
+        refreshLog();
+    }
+
     JDialog dialogForTest(String which) {
         JDialog d;
         if (which.equals("profiles")) {
             d = new ProfilesDialog(frame, store, () -> { });
         } else if (which.equals("edit")) {
-            d = new ProfileEditDialog(new JDialog(frame), store, store.selected());
+            d = new ProfileEditDialog(frame, store, store.selected());
+        } else if (which.equals("tunnels")) {
+            Store.Profile p = store.selected();
+            p.tunnels = "L|8080|example.com:80;R|2222|localhost:22;D|1080|";
+            d = new TunnelsDialog(frame, store, p, false);
         } else {
             d = new SettingsDialog(frame, store, (c, r) -> { });
         }
@@ -303,21 +349,42 @@ public final class Gui {
 
     private void showMenu(JComponent anchor) {
         JPopupMenu m = new JPopupMenu();
-        m.setBorder(BorderFactory.createLineBorder(new Color(0x2B3A5C)));
-        m.add(item("کانفیگ‌ها", () -> new ProfilesDialog(frame, store, this::reloadProfiles).setVisible(true)));
-        m.add(item("تنظیمات", () -> new SettingsDialog(frame, store, Gui::ctlAsync).setVisible(true)));
-        m.add(item(logOpen ? "بستن لاگ‌ها" : "لاگ‌ها", this::toggleLog));
+        m.setBorder(BorderFactory.createLineBorder(LINE));
+        m.add(item(L.t("menu_configs"), () -> new ProfilesDialog(frame, store, this::reloadProfiles).setVisible(true)));
+        m.add(item(L.t("menu_tunnels"), this::openTunnels));
+        m.add(item(L.t("menu_settings"), this::openSettings));
+        m.add(item(logOpen ? L.t("menu_logs_close") : L.t("menu_logs"), this::toggleLog));
+        m.addSeparator();
+        m.add(item(L.t("menu_about"), () -> JOptionPane.showMessageDialog(frame, L.t("about_text"), L.t("menu_about"), JOptionPane.PLAIN_MESSAGE)));
+        m.add(item(L.t("menu_exit"), () -> System.exit(0)));
         m.show(anchor, 0, anchor.getHeight());
+    }
+
+    private void openTunnels() {
+        Store.Profile p = store.selected();
+        if (p == null) {
+            JOptionPane.showMessageDialog(frame, L.t("t_none"));
+            return;
+        }
+        new TunnelsDialog(frame, store, p, true).setVisible(true);
+    }
+
+    private void openSettings() {
+        SettingsDialog d;
+        do {
+            d = new SettingsDialog(frame, store, Gui::ctlAsync);
+            d.setVisible(true);
+            if (d.newLang != null) switchLang(d.newLang);
+        } while (d.newLang != null);
     }
 
     private static JMenuItem item(String text, Runnable r) {
         JMenuItem i = new JMenuItem(text);
-        i.setFont(Ui.font(14f, Font.PLAIN));
+        i.setFont(Ui.pick(text, 14f, Font.PLAIN));
         i.setBackground(Ui.CARD);
         i.setForeground(Ui.TEXT);
-        i.setBorder(BorderFactory.createEmptyBorder(8, 16, 8, 16));
-        i.setComponentOrientation(ComponentOrientation.RIGHT_TO_LEFT);
-        i.setHorizontalAlignment(JMenuItem.RIGHT);
+        i.setBorder(BorderFactory.createEmptyBorder(8, 16, 8, 24));
+        orient(i);
         i.addActionListener(e -> r.run());
         return i;
     }
@@ -334,14 +401,14 @@ public final class Gui {
             }));
         }
         m.addSeparator();
-        m.add(item("مدیریت کانفیگ‌ها…", () -> new ProfilesDialog(frame, store, this::reloadProfiles).setVisible(true)));
+        m.add(item(L.t("manage_configs"), () -> new ProfilesDialog(frame, store, this::reloadProfiles).setVisible(true)));
         m.show(anchor, 0, anchor.getHeight());
     }
 
     private void toggleLog() {
         logOpen = !logOpen;
         logScroll.setVisible(logOpen);
-        logArrow.setUp(!logOpen);
+        logArrow.setDir(logOpen ? Ui.Chevron.DOWN : Ui.Chevron.RIGHT);
         if (frame != null) {
             frame.setSize(frame.getWidth(), frame.getHeight() + (logOpen ? LOG_H : -LOG_H));
             frame.revalidate();
@@ -355,7 +422,7 @@ public final class Gui {
         try {
             t = new String(Files.readAllBytes(RUN.resolve("engine.log")), StandardCharsets.UTF_8);
         } catch (IOException e) {
-            t = "(هنوز لاگی وجود ندارد؛ بعد از اتصال پر می‌شود)";
+            t = L.t("log_empty");
         }
         if (!localError.isEmpty()) t += "\nGUI: " + localError;
         if (!t.equals(lastLogText)) {
@@ -367,7 +434,8 @@ public final class Gui {
 
     private void reloadProfiles() {
         Store.Profile p = store.selected();
-        profileName.setText(p == null ? "افزودن کانفیگ" : p.title());
+        Ui.setText(profileName, p == null ? L.t("add_config") : p.title());
+        proto.setText("SSH  |  " + (p == null ? 22 : p.port));
     }
 
     // ───────────── اتصال / قطع ─────────────
@@ -381,12 +449,12 @@ public final class Gui {
         }
         Store.Profile p = store.selected();
         if (p == null) {
-            JOptionPane.showMessageDialog(frame, "اول یک کانفیگ اضافه کنید.");
+            JOptionPane.showMessageDialog(frame, L.t("add_first"));
             new ProfilesDialog(frame, store, this::reloadProfiles).setVisible(true);
             return;
         }
         if (p.user.isEmpty() || p.pass.isEmpty() || p.host.isEmpty()) {
-            JOptionPane.showMessageDialog(frame, "نام کاربری، رمز و آدرس سرور این کانفیگ کامل نیست.");
+            JOptionPane.showMessageDialog(frame, L.t("incomplete"));
             new ProfilesDialog(frame, store, this::reloadProfiles).setVisible(true);
             return;
         }
@@ -422,10 +490,10 @@ public final class Gui {
             }
             String out = new String(pr.getInputStream().readAllBytes(), StandardCharsets.UTF_8).trim();
             int code = pr.waitFor();
-            if (code == 126 || code == 127) return "احراز هویت لغو شد یا مجوز داده نشد";
-            return code == 0 ? null : (out.isEmpty() ? "خطا (کد " + code + ")" : out);
+            if (code == 126 || code == 127) return L.t("auth_cancel");
+            return code == 0 ? null : (out.isEmpty() ? L.t("err_code") + code + ")" : out);
         } catch (Exception e) {
-            return "اجرای pkexec ممکن نشد: " + e.getMessage();
+            return L.t("pkexec_fail") + e.getMessage();
         }
     }
 
@@ -488,26 +556,27 @@ public final class Gui {
 
         power.setState(connected ? Ui.PowerButton.ON : working ? Ui.PowerButton.BUSY : Ui.PowerButton.OFF);
         power.setEnabled(!busy);
-        status.setText(connected ? "متصل" : "reconnecting".equals(state) ? "اتصال مجدد…" : working ? "در حال اتصال…" : "قطع");
+        Ui.setText(status, connected ? L.t("connected") : "reconnecting".equals(state) ? L.t("reconnecting")
+                : working ? L.t("connecting") : L.t("disconnected"));
         status.setForeground(connected ? Ui.OK : working ? Ui.ACCENT : Ui.MUTED);
-        proto.setFill(connected ? new Color(0x1E8E4E) : new Color(0x2B3A5C));
+        proto.setFill(connected ? new Color(0x1E8E4E) : new Color(0x22324F));
+        shield.setOn(connected);
 
         if (connected) {
             long since = parse(st.getProperty("since"));
             long sec = Math.max(0, (System.currentTimeMillis() - since) / 1000);
-            stats.setText(String.format(Locale.US, "%02d:%02d:%02d   •   ↑ %s   ↓ %s",
+            stats.setText(String.format(Locale.US, "%02d:%02d:%02d   ↑ %s   ↓ %s",
                     sec / 3600, (sec / 60) % 60, sec % 60, fmt(parse(st.getProperty("tx"))), fmt(parse(st.getProperty("rx")))));
         } else {
             stats.setText(" ");
         }
-        Store.Profile p = store.selected();
-        profileName.setText(p == null ? "افزودن کانفیگ" : p.title());
-        ipLabel.setText(connected ? "آی‌پی سرور (VPN)" : "آی‌پی شما");
-        ipValue.setText(ip);
+        reloadProfiles();
+        Ui.setText(ipLabel, connected ? L.t("vpn_ip") : L.t("your_ip"));
+        Ui.setText(ipValue, "unknown".equals(ip) ? L.t("unknown") : ip);
         ipValue.setForeground(connected ? Ui.OK : Ui.TEXT);
 
         String err = !localError.isEmpty() ? localError : lastEngineError;
-        error.setText(!active && !busy && !err.isEmpty() ? "<html><div style='text-align:center;width:280px'>" + esc(err) + "</div></html>" : " ");
+        error.setText(!active && !busy && !err.isEmpty() ? "<html><div style='width:400px'>" + esc(err) + "</div></html>" : " ");
 
         String banner = active ? clean(st.getProperty("banner", "")) : "";
         if (connected && !banner.isEmpty() && !bannerShown) {
@@ -525,8 +594,8 @@ public final class Gui {
         a.setForeground(Ui.TEXT);
         a.setFont(Ui.font(14f, Font.PLAIN));
         a.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
-        a.setComponentOrientation(ComponentOrientation.RIGHT_TO_LEFT);
-        JOptionPane.showMessageDialog(frame, new JScrollPane(a), "پیام سرور", JOptionPane.PLAIN_MESSAGE);
+        orient(a);
+        JOptionPane.showMessageDialog(frame, new JScrollPane(a), L.t("banner_title"), JOptionPane.PLAIN_MESSAGE);
     }
 
     // ───────────── IP ─────────────
@@ -544,7 +613,7 @@ public final class Gui {
             ipState = state;
             ip = "…";
             scheduleIp(state == 1 ? 2000 : 300);
-        } else if ("نامشخص".equals(ip) && now - ipFailAt > 8000) {
+        } else if ("unknown".equals(ip) && now - ipFailAt > 8000) {
             ipFailAt = now;
             scheduleIp(0);
         }
@@ -555,7 +624,7 @@ public final class Gui {
         ipExec.schedule(() -> {
             String r = fetchIp();
             if (gen != ipGen) return;
-            ip = r == null ? "نامشخص" : r;
+            ip = r == null ? "unknown" : r;
             ipFailAt = System.currentTimeMillis();
         }, delayMs, TimeUnit.MILLISECONDS);
     }
@@ -606,7 +675,30 @@ public final class Gui {
         return String.format(Locale.US, "%.2f GB", v / 1024);
     }
 
-    // ───────────── دیالوگ کانفیگ‌ها ─────────────
+    // ───────────── دیالوگ‌ها ─────────────
+
+    private static JPanel vbox() {
+        JPanel p = new JPanel();
+        p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
+        p.setBackground(Ui.BG);
+        p.setBorder(BorderFactory.createEmptyBorder(14, 18, 14, 18));
+        return p;
+    }
+
+    private static void ltr(JComponent... cs) {
+        for (JComponent c : cs) c.setComponentOrientation(ComponentOrientation.LEFT_TO_RIGHT);
+    }
+
+    private static void addRow(JPanel p, String label, JComponent c) {
+        JPanel row = new JPanel(new BorderLayout(0, 3));
+        row.setOpaque(false);
+        row.add(Ui.label(label, Ui.MUTED, 12f, Font.PLAIN), BorderLayout.NORTH);
+        row.add(c, BorderLayout.CENTER);
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 70));
+        row.setAlignmentX(JComponent.CENTER_ALIGNMENT);
+        p.add(row);
+        p.add(Box.createVerticalStrut(6));
+    }
 
     private static final class ProfilesDialog extends JDialog {
         private final Store store;
@@ -615,7 +707,7 @@ public final class Gui {
         private final JList<String> list = new JList<>(model);
 
         ProfilesDialog(JFrame owner, Store store, Runnable onChange) {
-            super(owner, "کانفیگ‌ها", true);
+            super(owner, L.t("configs"), true);
             this.store = store;
             this.onChange = onChange;
             JPanel p = new JPanel(new BorderLayout(0, 10));
@@ -623,20 +715,20 @@ public final class Gui {
             p.setBorder(BorderFactory.createEmptyBorder(14, 14, 14, 14));
             list.setBackground(Ui.CARD);
             list.setForeground(Ui.TEXT);
-            list.setFont(Ui.font(15f, Font.PLAIN));
+            list.setFont(Ui.pick("a", 14f, Font.PLAIN));
             list.setFixedCellHeight(36);
             p.add(new JScrollPane(list), BorderLayout.CENTER);
             JPanel b = new JPanel(new GridLayout(1, 3, 8, 0));
             b.setOpaque(false);
-            Ui.RoundButton add = Ui.button("+ افزودن", Ui.ACCENT);
-            Ui.RoundButton edit = Ui.button("ویرایش", Ui.DARK_BTN);
-            Ui.RoundButton pick = Ui.button("انتخاب", Ui.DARK_BTN);
+            Ui.RoundButton add = Ui.button(L.t("add"), Ui.ACCENT);
+            Ui.RoundButton edit = Ui.button(L.t("edit"), Ui.DARK_BTN);
+            Ui.RoundButton pick = Ui.button(L.t("select"), Ui.DARK_BTN);
             b.add(add);
             b.add(edit);
             b.add(pick);
             p.add(b, BorderLayout.SOUTH);
             setContentPane(p);
-            applyComponentOrientation(ComponentOrientation.RIGHT_TO_LEFT);
+            orient(this);
             setSize(420, 380);
             setLocationRelativeTo(owner);
             add.addActionListener(e -> edit(null));
@@ -668,13 +760,10 @@ public final class Gui {
     }
 
     private static final class ProfileEditDialog extends JDialog {
-        ProfileEditDialog(JDialog owner, Store store, Store.Profile existing) {
-            super(owner, existing == null ? "کانفیگ جدید" : "ویرایش کانفیگ", true);
+        ProfileEditDialog(Window owner, Store store, Store.Profile existing) {
+            super(owner, existing == null ? L.t("new_config") : L.t("edit_config"), Dialog.ModalityType.APPLICATION_MODAL);
             final Store.Profile f = existing != null ? existing : new Store.Profile();
-            JPanel p = new JPanel();
-            p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
-            p.setBackground(Ui.BG);
-            p.setBorder(BorderFactory.createEmptyBorder(14, 18, 14, 18));
+            JPanel p = vbox();
             final JTextField name = Ui.field(), host = Ui.field(), port = Ui.field(), user = Ui.field(), udpgw = Ui.field();
             final JPasswordField pass = Ui.password();
             name.setText(f.name);
@@ -683,19 +772,24 @@ public final class Gui {
             user.setText(f.user);
             pass.setText(f.pass);
             udpgw.setText(String.valueOf(f.udpgw));
-            name.setHorizontalAlignment(JTextField.RIGHT);
-            addRow(p, "نام کانفیگ", name);
-            addRow(p, "آدرس سرور", host);
-            addRow(p, "پورت SSH", port);
-            addRow(p, "نام کاربری", user);
-            addRow(p, "رمز عبور", pass);
-            addRow(p, "پورت badvpn روی سرور (۰ = غیرفعال)", udpgw);
+            addRow(p, L.t("f_name"), name);
+            addRow(p, L.t("f_host"), host);
+            addRow(p, L.t("f_port"), port);
+            addRow(p, L.t("f_user"), user);
+            addRow(p, L.t("f_pass"), pass);
+            addRow(p, L.t("f_udpgw"), udpgw);
+            Ui.RoundButton tun = Ui.button(L.t("tunnels_btn"), Ui.DARK_BTN);
+            tun.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
+            tun.setAlignmentX(JComponent.CENTER_ALIGNMENT);
+            tun.addActionListener(e -> new TunnelsDialog(this, store, f, false).setVisible(true));
+            p.add(Box.createVerticalStrut(4));
+            p.add(tun);
             JPanel b = new JPanel(new GridLayout(1, existing == null ? 1 : 2, 8, 0));
             b.setOpaque(false);
-            Ui.RoundButton save = Ui.button("ذخیره", Ui.ACCENT);
+            Ui.RoundButton save = Ui.button(L.t("save"), Ui.ACCENT);
             b.add(save);
             if (existing != null) {
-                Ui.RoundButton del = Ui.button("حذف", Ui.DARK_BTN);
+                Ui.RoundButton del = Ui.button(L.t("delete"), Ui.DARK_BTN);
                 del.setForeground(Ui.BAD);
                 del.addActionListener(e -> {
                     store.deleteProfile(f.id);
@@ -704,11 +798,11 @@ public final class Gui {
                 b.add(del);
             }
             b.setMaximumSize(new Dimension(Integer.MAX_VALUE, 44));
-            p.add(Box.createVerticalStrut(12));
+            p.add(Box.createVerticalStrut(10));
             p.add(b);
             save.addActionListener(e -> {
                 if (host.getText().trim().isEmpty() || user.getText().trim().isEmpty() || pass.getPassword().length == 0) {
-                    JOptionPane.showMessageDialog(this, "آدرس سرور، نام کاربری و رمز را وارد کنید.");
+                    JOptionPane.showMessageDialog(this, L.t("fill_fields"));
                     return;
                 }
                 f.name = name.getText().trim();
@@ -721,21 +815,178 @@ public final class Gui {
                 dispose();
             });
             setContentPane(p);
-            applyComponentOrientation(ComponentOrientation.RIGHT_TO_LEFT);
-            for (JComponent c : new JComponent[]{host, port, user, pass, udpgw}) c.setComponentOrientation(ComponentOrientation.LEFT_TO_RIGHT);
+            orient(this);
+            ltr(host, port, user, pass, udpgw);
             pack();
             setSize(400, getHeight() + 10);
             setLocationRelativeTo(owner);
         }
+    }
 
-        private static void addRow(JPanel p, String label, JComponent c) {
-            JPanel row = new JPanel(new BorderLayout(0, 3));
-            row.setOpaque(false);
-            row.add(Ui.label(label, Ui.MUTED, 12f, Font.PLAIN), BorderLayout.NORTH);
-            row.add(c, BorderLayout.CENTER);
-            row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 70));
-            p.add(row);
+    /** فوروارد پورت شبیه PuTTY: Local / Remote / Dynamic. */
+    private static final class TunnelsDialog extends JDialog {
+        private final DefaultListModel<Tunnel> model = new DefaultListModel<>();
+
+        TunnelsDialog(Window owner, Store store, Store.Profile f, boolean persist) {
+            super(owner, L.t("t_title"), Dialog.ModalityType.APPLICATION_MODAL);
+            for (Tunnel t : Tunnel.parseList(f.tunnels)) model.addElement(t);
+            JPanel p = vbox();
+
+            final JCheckBox anyL = check(L.t("t_any_local"), f.anyLocal);
+            final JCheckBox anyR = check(L.t("t_any_remote"), f.anyRemote);
+            p.add(left(anyL));
+            p.add(left(anyR));
+            p.add(Box.createVerticalStrut(10));
+
+            JPanel head = new JPanel(new BorderLayout());
+            head.setOpaque(false);
+            head.add(Ui.label(L.t("t_forwarded"), Ui.MUTED, 13f, Font.PLAIN), BorderLayout.CENTER);
+            Ui.RoundButton rem = Ui.button(L.t("t_remove"), Ui.DARK_BTN);
+            rem.setPreferredSize(new Dimension(96, 34));
+            head.add(rem, BorderLayout.EAST);
+            head.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
+            p.add(head);
             p.add(Box.createVerticalStrut(6));
+
+            final JList<Tunnel> list = new JList<>(model);
+            list.setBackground(Ui.FIELD);
+            list.setForeground(Ui.TEXT);
+            list.setFont(Ui.latin(14f, Font.PLAIN));
+            list.setFixedCellHeight(28);
+            list.setCellRenderer(new javax.swing.DefaultListCellRenderer() {
+                @Override
+                public java.awt.Component getListCellRendererComponent(JList<?> l, Object v, int i, boolean sel, boolean foc) {
+                    Tunnel t = (Tunnel) v;
+                    String txt = String.valueOf(t.type) + t.srcPort + (t.type == 'D' ? "   (SOCKS)" : "    " + t.dest);
+                    JLabel c = (JLabel) super.getListCellRendererComponent(l, txt, i, sel, foc);
+                    c.setFont(Ui.latin(14f, Font.PLAIN));
+                    c.setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));
+                    return c;
+                }
+            });
+            ltr(list);
+            JScrollPane sp = new JScrollPane(list);
+            sp.setPreferredSize(new Dimension(300, 120));
+            sp.setMaximumSize(new Dimension(Integer.MAX_VALUE, 120));
+            sp.setAlignmentX(JComponent.CENTER_ALIGNMENT);
+            p.add(sp);
+            p.add(Box.createVerticalStrut(12));
+            p.add(left(Ui.label(L.t("t_add_new"), Ui.MUTED, 13f, Font.PLAIN)));
+            p.add(Box.createVerticalStrut(6));
+
+            final JTextField src = Ui.field(), dst = Ui.field();
+            src.setPreferredSize(new Dimension(100, 38));
+            Ui.RoundButton add = Ui.button(L.t("t_add"), Ui.ACCENT);
+            add.setPreferredSize(new Dimension(96, 38));
+            JPanel r1 = new JPanel(new BorderLayout(8, 0));
+            r1.setOpaque(false);
+            JPanel srcBox = new JPanel(new BorderLayout(8, 0));
+            srcBox.setOpaque(false);
+            srcBox.add(Ui.label(L.t("t_src"), Ui.TEXT, 13f, Font.PLAIN), BorderLayout.WEST);
+            srcBox.add(src, BorderLayout.CENTER);
+            r1.add(srcBox, BorderLayout.CENTER);
+            r1.add(add, BorderLayout.EAST);
+            r1.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
+            p.add(r1);
+            p.add(Box.createVerticalStrut(6));
+            JPanel r2 = new JPanel(new BorderLayout(8, 0));
+            r2.setOpaque(false);
+            r2.add(Ui.label(L.t("t_dst"), Ui.TEXT, 13f, Font.PLAIN), BorderLayout.WEST);
+            r2.add(dst, BorderLayout.CENTER);
+            r2.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
+            p.add(r2);
+            p.add(Box.createVerticalStrut(8));
+
+            final JRadioButton rl = radio(L.t("t_local"), true), rr = radio(L.t("t_remote"), false), rd = radio(L.t("t_dynamic"), false);
+            ButtonGroup g = new ButtonGroup();
+            g.add(rl);
+            g.add(rr);
+            g.add(rd);
+            JPanel r3 = new JPanel(new GridLayout(1, 3, 6, 0));
+            r3.setOpaque(false);
+            r3.add(rl);
+            r3.add(rr);
+            r3.add(rd);
+            r3.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
+            p.add(r3);
+            java.awt.event.ActionListener typeCh = e -> {
+                dst.setEnabled(!rd.isSelected());
+                if (rd.isSelected()) dst.setText("");
+            };
+            rl.addActionListener(typeCh);
+            rr.addActionListener(typeCh);
+            rd.addActionListener(typeCh);
+
+            p.add(Box.createVerticalStrut(10));
+            p.add(left(Ui.label(L.t("t_note"), Ui.MUTED, 12f, Font.PLAIN)));
+            p.add(Box.createVerticalStrut(10));
+            Ui.RoundButton save = Ui.button(L.t("t_save"), Ui.ACCENT);
+            save.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
+            save.setAlignmentX(JComponent.CENTER_ALIGNMENT);
+            p.add(save);
+
+            add.addActionListener(e -> {
+                int port;
+                try {
+                    port = Integer.parseInt(src.getText().trim());
+                } catch (NumberFormatException ex) {
+                    port = -1;
+                }
+                char type = rl.isSelected() ? 'L' : rr.isSelected() ? 'R' : 'D';
+                Tunnel t = Tunnel.make(type, port, dst.getText().trim());
+                if (t == null) {
+                    JOptionPane.showMessageDialog(this, L.t("t_bad"));
+                    return;
+                }
+                model.addElement(t);
+                src.setText("");
+                dst.setText("");
+            });
+            rem.addActionListener(e -> {
+                int i = list.getSelectedIndex();
+                if (i >= 0) model.remove(i);
+            });
+            save.addActionListener(e -> {
+                java.util.List<Tunnel> l = new java.util.ArrayList<>();
+                for (int i = 0; i < model.size(); i++) l.add(model.get(i));
+                f.tunnels = Tunnel.encodeList(l);
+                f.anyLocal = anyL.isSelected();
+                f.anyRemote = anyR.isSelected();
+                if (persist) store.saveProfile(f);
+                dispose();
+            });
+
+            setContentPane(p);
+            orient(this);
+            ltr(src, dst);
+            pack();
+            setSize(Math.max(getWidth(), 470), getHeight() + 6);
+            setLocationRelativeTo(owner);
+        }
+
+        private static JCheckBox check(String t, boolean v) {
+            JCheckBox c = new JCheckBox(t, v);
+            c.setOpaque(false);
+            c.setForeground(Ui.TEXT);
+            c.setFont(Ui.pick(t, 13f, Font.PLAIN));
+            return c;
+        }
+
+        private static JRadioButton radio(String t, boolean v) {
+            JRadioButton c = new JRadioButton(t, v);
+            c.setOpaque(false);
+            c.setForeground(Ui.TEXT);
+            c.setFont(Ui.latin(13f, Font.PLAIN));
+            return c;
+        }
+
+        private static JComponent left(JComponent c) {
+            JPanel w = new JPanel(new BorderLayout());
+            w.setOpaque(false);
+            w.add(c, BorderLayout.CENTER);
+            w.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
+            w.setAlignmentX(JComponent.CENTER_ALIGNMENT);
+            return w;
         }
     }
 
@@ -748,58 +999,81 @@ public final class Gui {
         }
     }
 
-    // ───────────── دیالوگ تنظیمات ─────────────
-
     private interface CtlRunner {
         void run(String cmd, java.util.function.Consumer<String> done);
     }
 
     private static final class SettingsDialog extends JDialog {
         private final DefaultListModel<String> model = new DefaultListModel<>();
+        String newLang;
 
         SettingsDialog(JFrame owner, Store store, CtlRunner ctl) {
-            super(owner, "تنظیمات", true);
-            JPanel p = new JPanel();
-            p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
-            p.setBackground(Ui.BG);
-            p.setBorder(BorderFactory.createEmptyBorder(14, 18, 14, 18));
+            super(owner, L.t("settings"), true);
+            JPanel p = vbox();
+
+            // زبان
+            p.add(Ui.label(L.t("lang_note"), Ui.MUTED, 12f, Font.PLAIN));
+            p.add(Box.createVerticalStrut(4));
+            JPanel lg = new JPanel(new GridLayout(1, 2, 8, 0));
+            lg.setOpaque(false);
+            Ui.RoundButton fa = Ui.button("فارسی", L.isFa() ? Ui.ACCENT : Ui.DARK_BTN);
+            Ui.RoundButton en = Ui.button("English", L.isFa() ? Ui.DARK_BTN : Ui.ACCENT);
+            lg.add(fa);
+            lg.add(en);
+            lg.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
+            p.add(lg);
+            p.add(Box.createVerticalStrut(12));
+            fa.addActionListener(e -> {
+                if (!L.isFa()) { newLang = "fa"; dispose(); }
+            });
+            en.addActionListener(e -> {
+                if (L.isFa()) { newLang = "en"; dispose(); }
+            });
 
             final JTextField d1 = Ui.field(), d2 = Ui.field();
             d1.setText(store.dns1());
             d2.setText(store.dns2());
-            d1.setComponentOrientation(ComponentOrientation.LEFT_TO_RIGHT);
-            d2.setComponentOrientation(ComponentOrientation.LEFT_TO_RIGHT);
-            ProfileEditDialog.addRow(p, "دی‌ان‌اس اول", d1);
-            ProfileEditDialog.addRow(p, "دی‌ان‌اس دوم (اختیاری)", d2);
-            final JCheckBox bypass = new JCheckBox("ترافیک ایران مستقیم برود", store.bypass());
+            addRow(p, L.t("dns1"), d1);
+            addRow(p, L.t("dns2"), d2);
+            final JCheckBox bypass = new JCheckBox(L.t("bypass"), store.bypass());
             bypass.setOpaque(false);
             bypass.setForeground(Ui.TEXT);
-            p.add(bypass);
+            bypass.setFont(Ui.pick(L.t("bypass"), 13f, Font.PLAIN));
+            bypass.setAlignmentX(JComponent.LEFT_ALIGNMENT);
+            JPanel bw = new JPanel(new BorderLayout());
+            bw.setOpaque(false);
+            bw.add(bypass, BorderLayout.CENTER);
+            bw.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
+            p.add(bw);
             p.add(Box.createVerticalStrut(10));
 
-            p.add(Ui.label("موارد دستی مستقیم (IP / CIDR / دامنه):", Ui.MUTED, 12f, Font.PLAIN));
+            JPanel ml = new JPanel(new BorderLayout());
+            ml.setOpaque(false);
+            ml.add(Ui.label(L.t("manual"), Ui.MUTED, 12f, Font.PLAIN), BorderLayout.CENTER);
+            ml.setMaximumSize(new Dimension(Integer.MAX_VALUE, 24));
+            p.add(ml);
             for (String s : store.manual()) model.addElement(s);
             final JList<String> list = new JList<>(model);
             list.setBackground(Ui.CARD);
             list.setForeground(Ui.TEXT);
+            list.setFont(Ui.latin(13f, Font.PLAIN));
             JScrollPane sp = new JScrollPane(list);
-            sp.setPreferredSize(new Dimension(300, 110));
-            sp.setMaximumSize(new Dimension(Integer.MAX_VALUE, 110));
+            sp.setPreferredSize(new Dimension(300, 100));
+            sp.setMaximumSize(new Dimension(Integer.MAX_VALUE, 100));
             p.add(sp);
             JPanel add = new JPanel(new BorderLayout(6, 0));
             add.setOpaque(false);
             final JTextField entry = Ui.field();
-            entry.setComponentOrientation(ComponentOrientation.LEFT_TO_RIGHT);
-            Ui.RoundButton addB = Ui.button("افزودن", Ui.ACCENT);
-            Ui.RoundButton delB = Ui.button("حذف", Ui.DARK_BTN);
+            Ui.RoundButton addB = Ui.button(L.t("add_short"), Ui.ACCENT);
+            Ui.RoundButton delB = Ui.button(L.t("del_short"), Ui.DARK_BTN);
             addB.setPreferredSize(new Dimension(92, 40));
-            delB.setPreferredSize(new Dimension(76, 40));
+            delB.setPreferredSize(new Dimension(80, 40));
             JPanel btns = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
             btns.setOpaque(false);
             btns.add(addB);
             btns.add(delB);
             add.add(entry, BorderLayout.CENTER);
-            add.add(btns, BorderLayout.WEST);
+            add.add(btns, BorderLayout.EAST);
             add.setMaximumSize(new Dimension(Integer.MAX_VALUE, 44));
             p.add(Box.createVerticalStrut(6));
             p.add(add);
@@ -822,9 +1096,9 @@ public final class Gui {
             });
 
             p.add(Box.createVerticalStrut(12));
-            Ui.RoundButton upd = Ui.button("به‌روزرسانی لیست ایران", Ui.DARK_BTN);
-            Ui.RoundButton forget = Ui.button("پاک‌کردن کلیدهای ذخیره‌شدهٔ سرورها", Ui.DARK_BTN);
-            Ui.RoundButton save = Ui.button("ذخیره", Ui.ACCENT);
+            Ui.RoundButton upd = Ui.button(L.t("upd_list"), Ui.DARK_BTN);
+            Ui.RoundButton forget = Ui.button(L.t("forget_keys"), Ui.DARK_BTN);
+            Ui.RoundButton save = Ui.button(L.t("save"), Ui.ACCENT);
             for (Ui.RoundButton b : new Ui.RoundButton[]{upd, forget, save}) {
                 b.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
                 b.setAlignmentX(JComponent.CENTER_ALIGNMENT);
@@ -832,12 +1106,12 @@ public final class Gui {
                 p.add(Box.createVerticalStrut(8));
             }
             upd.addActionListener(e -> ctl.run("update-list", r ->
-                    JOptionPane.showMessageDialog(this, r == null ? "لیست به‌روز شد (از اتصال بعدی اعمال می‌شود)" : r)));
+                    JOptionPane.showMessageDialog(this, r == null ? L.t("list_updated") : r)));
             forget.addActionListener(e -> ctl.run("forget-keys", r ->
-                    JOptionPane.showMessageDialog(this, r == null ? "پاک شد" : r)));
+                    JOptionPane.showMessageDialog(this, r == null ? L.t("cleared") : r)));
             save.addActionListener(e -> {
                 if (!ok(d1.getText()) || (!d2.getText().trim().isEmpty() && !ok(d2.getText()))) {
-                    JOptionPane.showMessageDialog(this, "DNS نامعتبر است (مثلاً 1.1.1.1)");
+                    JOptionPane.showMessageDialog(this, L.t("bad_dns"));
                     return;
                 }
                 store.setNet(d1.getText().trim(), d2.getText().trim(), bypass.isSelected());
@@ -848,8 +1122,9 @@ public final class Gui {
                     javax.swing.ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
             outer.setBorder(null);
             setContentPane(outer);
-            applyComponentOrientation(ComponentOrientation.RIGHT_TO_LEFT);
-            setSize(440, 600);
+            orient(this);
+            ltr(d1, d2, entry);
+            setSize(460, 640);
             setLocationRelativeTo(owner);
         }
 
