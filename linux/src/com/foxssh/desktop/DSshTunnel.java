@@ -96,7 +96,11 @@ final class DSshTunnel implements ChannelOpener {
             ch.connect(15000);
             return new Chan(ch, in, out);
         } catch (JSchException e) {
-            throw new IOException(e.getMessage(), e);
+            String m = String.valueOf(e.getMessage());
+            if (m.contains("channel is not opened") || m.contains("open failed")) {
+                m = "سرور به این مقصد وصل نشد (بسته/غیرقابل‌دسترس / destination refused)";
+            }
+            throw new IOException(m, e);
         }
     }
 

@@ -17,6 +17,8 @@ cp assets/logo256.png "$OUT/logo256.png"
 cp assets/logo48.png "$OUT/logo48.png"
 cp assets/logo256.png "$OUT/classes/logo.png"
 mkdir -p "$OUT/classes/fonts" && cp assets/fonts/*.ttf "$OUT/classes/fonts/"
+mkdir -p "$OUT/classes/flags" && cp assets/flags/*.png "$OUT/classes/flags/"
+cp assets/worldmap.png "$OUT/classes/worldmap.png"
 jar --create --file "$OUT/foxssh.jar" -C "$OUT/classes" .
 
 echo "== ساخت بسته"

@@ -33,6 +33,7 @@ public final class GuiShot {
             return s;
         };
         Gui.demoIp = "130.94.2.77";
+        Gui.demoCc = "IR";
         final Gui[] g = new Gui[1];
         SwingUtilities.invokeAndWait(() -> {
             g[0] = new Gui();

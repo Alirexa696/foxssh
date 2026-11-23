@@ -64,6 +64,7 @@ public final class Gui {
     static BooleanSupplier activeFn = Gui::systemctlActive;
     static Supplier<Properties> statusFn = Gui::readStatusFile;
     static volatile String demoIp;
+    static volatile String demoCc;
 
     private final Store store = new Store();
     private final ScheduledExecutorService poller = Executors.newSingleThreadScheduledExecutor(r -> {
@@ -94,6 +95,9 @@ public final class Gui {
 
     // IP
     private volatile String ip = "…";
+    private volatile String ipCc = "";
+    private JLabel flag;
+    private static final java.util.Map<String, ImageIcon> FLAGS = new java.util.HashMap<>();
     private volatile int ipState = -1;
     private volatile int ipGen;
     private volatile long ipFailAt;
@@ -174,8 +178,7 @@ public final class Gui {
         root.add(bar, BorderLayout.NORTH);
 
         // ── بدنه
-        JPanel body = new JPanel(new BorderLayout(0, 8));
-        body.setBackground(Ui.BG);
+        JPanel body = new MapPanel();
         body.setBorder(BorderFactory.createEmptyBorder(14, 22, 12, 22));
 
         // ردیف پروتکل
@@ -212,7 +215,15 @@ public final class Gui {
         col.add(sep);
         col.add(Box.createVerticalStrut(12));
         col.add(ipLabel);
-        col.add(ipValue);
+        flag = new JLabel();
+        JPanel ipRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        ipRow.setOpaque(false);
+        flag.setBorder(BorderFactory.createEmptyBorder(0, 10, 0, 0));
+        ipRow.setAlignmentX(JComponent.LEFT_ALIGNMENT);
+        ipRow.add(ipValue);
+        ipRow.add(flag);
+        ipRow.setMaximumSize(new Dimension(300, 40));
+        col.add(ipRow);
         col.add(Box.createVerticalGlue());
         mid.add(col, BorderLayout.CENTER);
 
@@ -573,6 +584,7 @@ public final class Gui {
         reloadProfiles();
         Ui.setText(ipLabel, connected ? L.t("vpn_ip") : L.t("your_ip"));
         Ui.setText(ipValue, "unknown".equals(ip) ? L.t("unknown") : ip);
+        flag.setIcon(flagIcon(ipCc));
         ipValue.setForeground(connected ? Ui.OK : Ui.TEXT);
 
         String err = !localError.isEmpty() ? localError : lastEngineError;
@@ -582,6 +594,42 @@ public final class Gui {
         if (connected && !banner.isEmpty() && !bannerShown) {
             bannerShown = true; // فقط یک بار در هر اتصال
             showBanner(banner);
+        }
+    }
+
+    private static synchronized ImageIcon flagIcon(String cc) {
+        if (cc == null || cc.length() != 2) return null;
+        cc = cc.toLowerCase(Locale.ROOT);
+        ImageIcon i = FLAGS.get(cc);
+        if (i == null && !FLAGS.containsKey(cc)) {
+            URL u = Gui.class.getResource("/flags/" + cc + ".png");
+            if (u != null) i = new ImageIcon(new ImageIcon(u).getImage().getScaledInstance(34, 25, Image.SCALE_SMOOTH));
+            FLAGS.put(cc, i);
+        }
+        return i;
+    }
+
+    /** پس‌زمینهٔ بدنه: رنگ ساده + نقشهٔ نقطه‌ای جهان. */
+    private static final class MapPanel extends JPanel {
+        private final Image map;
+
+        MapPanel() {
+            super(new BorderLayout(0, 8));
+            setBackground(Ui.BG);
+            URL u = Gui.class.getResource("/worldmap.png");
+            map = u == null ? null : new ImageIcon(u).getImage();
+        }
+
+        @Override
+        protected void paintComponent(java.awt.Graphics g) {
+            super.paintComponent(g);
+            if (map == null) return;
+            java.awt.Graphics2D g2 = (java.awt.Graphics2D) g.create();
+            g2.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION, java.awt.RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+            g2.setComposite(java.awt.AlphaComposite.getInstance(java.awt.AlphaComposite.SRC_OVER, 0.22f));
+            int w = getWidth(), h = w * map.getHeight(null) / map.getWidth(null);
+            g2.drawImage(map, 0, Math.max(0, (getHeight() - h) / 2), w, h, null);
+            g2.dispose();
         }
     }
 
@@ -606,12 +654,14 @@ public final class Gui {
     private void trackIp(int state) {
         if (demoIp != null) {
             ip = demoIp;
+            ipCc = demoCc == null ? "" : demoCc;
             return;
         }
         long now = System.currentTimeMillis();
         if (state != ipState) {
             ipState = state;
             ip = "…";
+            ipCc = "";
             scheduleIp(state == 1 ? 2000 : 300);
         } else if ("unknown".equals(ip) && now - ipFailAt > 8000) {
             ipFailAt = now;
@@ -626,6 +676,8 @@ public final class Gui {
             if (gen != ipGen) return;
             ip = r == null ? "unknown" : r;
             ipFailAt = System.currentTimeMillis();
+            String cc = r == null ? null : fetchCountry(r);
+            if (gen == ipGen) ipCc = cc == null ? "" : cc;
         }, delayMs, TimeUnit.MILLISECONDS);
     }
 
@@ -640,6 +692,28 @@ public final class Gui {
                     if (h.getResponseCode() != 200) continue;
                     String s = new String(h.getInputStream().readNBytes(100), StandardCharsets.US_ASCII).trim();
                     if (s.matches("[0-9a-fA-F:.]{7,45}")) return s;
+                } finally {
+                    h.disconnect();
+                }
+            } catch (Exception ignored) {
+            }
+        }
+        return null;
+    }
+
+    private static String fetchCountry(String ip) {
+        String[] urls = {"https://ipinfo.io/" + ip + "/country", "https://api.country.is/" + ip, "https://ipapi.co/" + ip + "/country/"};
+        for (String src : urls) {
+            try {
+                HttpURLConnection h = (HttpURLConnection) new URL(src).openConnection(Proxy.NO_PROXY);
+                h.setConnectTimeout(5000);
+                h.setReadTimeout(5000);
+                h.setRequestProperty("User-Agent", "curl/8");
+                try {
+                    if (h.getResponseCode() != 200) continue;
+                    String s = new String(h.getInputStream().readNBytes(300), StandardCharsets.UTF_8).trim();
+                    java.util.regex.Matcher m = java.util.regex.Pattern.compile("^([A-Za-z]{2})$|\"country\"\\s*:\\s*\"([A-Za-z]{2})\"").matcher(s);
+                    if (m.find()) return (m.group(1) != null ? m.group(1) : m.group(2)).toUpperCase(Locale.ROOT);
                 } finally {
                     h.disconnect();
                 }
