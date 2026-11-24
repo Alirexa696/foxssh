@@ -17,6 +17,14 @@ sudo apt install ./foxssh_1.1.0_amd64.deb
 هنگام اتصال، رمز کاربر (sudo) خواسته می‌شود تا تونل سیستم ساخته شود.
 
 ## خط فرمان (CLI)
+شکل ساده:
+```
+foxssh --add name --host example.com --port 22 --user ali --password 123 --udpgw 7300
+foxssh name connect          # یا: foxssh name disconnect
+foxssh list | show name | edit name --port 2022 | remove name
+foxssh dns 1.1.1.1 8.8.8.8
+```
+(شکل کامل‌تر و بقیهٔ دستورها:)
 `foxssh` بدون آرگومان رابط گرافیکی را باز می‌کند؛ با دستور، همان کارهای برنامه را بدون پنجره انجام می‌دهد (`foxssh --help`، `man foxssh`):
 
 ```

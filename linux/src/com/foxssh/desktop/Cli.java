@@ -138,6 +138,7 @@ public final class Cli {
             if (a.startsWith("--")) {
                 int eq = a.indexOf('=');
                 key = eq > 0 ? a.substring(2, eq) : a.substring(2);
+                if (key.equals("password")) key = "pass";
                 if (eq > 0) val = a.substring(eq + 1);
             } else {
                 String sk = a.substring(1, 2);
@@ -185,9 +186,32 @@ public final class Cli {
         return "root".equals(System.getProperty("user.name"));
     }
 
+    private static final List<String> CMDS = Arrays.asList("connect", "up", "disconnect", "down", "stop", "status", "logs", "log",
+            "list", "ls", "show", "add", "edit", "remove", "rm", "select", "use", "import", "dns", "bypass", "lang",
+            "update-list", "forget-keys", "service", "emit-config");
+    private static final List<String> NAME_FIRST = Arrays.asList("connect", "up", "disconnect", "down", "stop", "status",
+            "show", "edit", "remove", "rm", "select", "use");
+
+    /** شکل ساده: «foxssh --add name ...» و «foxssh name connect» را به شکل استاندارد برمی‌گرداند. */
+    private static void normalize(List<String> a) {
+        a.remove("--elevated");
+        if (a.isEmpty()) return;
+        String c = a.get(0);
+        if (c.startsWith("--") && CMDS.contains(c.substring(2))) a.set(0, c.substring(2)); // --add → add
+        else if (a.size() >= 2 && !c.startsWith("-") && !CMDS.contains(c) && NAME_FIRST.contains(a.get(1))) {
+            a.set(0, a.get(1)); // name connect → connect name
+            a.set(1, c);
+        }
+    }
+
     private static int run(List<String> args) throws Exception {
-        List<String> orig = new ArrayList<>(args);
         boolean elevated = args.remove("--elevated");
+        args.add(0, "--x");
+        normalize(args.subList(1, args.size()));
+        args.remove(0);
+        if (elevated) args.add("--elevated");
+        List<String> orig = new ArrayList<>(args);
+        args.remove("--elevated");
         if (args.isEmpty()) {
             usage(System.out);
             return 0;
@@ -252,6 +276,12 @@ public final class Cli {
                 + "Usage: foxssh                         open the GUI\n"
                 + "       foxssh --hidden                start the GUI hidden in the tray\n"
                 + "       foxssh COMMAND [options]\n"
+                + "\n"
+                + "Quick form:\n"
+                + "  foxssh --add NAME --host H --port 22 --user U --password P --udpgw 7300\n"
+                + "  foxssh NAME connect | disconnect\n"
+                + "  foxssh list | show NAME | edit NAME ... | remove NAME\n"
+                + "  foxssh dns 1.1.1.1 8.8.8.8\n"
                 + "\n"
                 + "Connection:\n"
                 + "  connect [NAME]        connect (NAME = profile name/id; default profile if omitted)\n"
