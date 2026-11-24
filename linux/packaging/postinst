@@ -4,6 +4,9 @@ if ! getent passwd foxssh >/dev/null; then
   adduser --system --group --no-create-home --home /var/lib/foxssh --shell /usr/sbin/nologin foxssh >/dev/null
 fi
 install -d -m 755 -o foxssh -g foxssh /var/lib/foxssh
+# پروفایل‌ها و تنظیمات سیستمی (فقط root می‌خواند؛ شامل رمز)
+install -d -m 755 /etc/foxssh
+install -d -m 700 /etc/foxssh/profiles.d
 systemctl daemon-reload >/dev/null 2>&1 || true
 
 # آیکون‌های سینی (foxssh_tray_off/on) در تم hicolor

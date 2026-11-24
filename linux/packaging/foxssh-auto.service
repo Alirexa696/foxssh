@@ -1,0 +1,27 @@
+# اتصال خودکار هنگام بوت با کانفیگ پیش‌فرضِ /etc/foxssh (مدیریت با: foxssh service enable|disable|status).
+#   sudo foxssh add --name office --host H --user U --pass-file /root/pw
+#   sudo foxssh service enable office
+# با foxssh.service (اتصال دستی/رابط گرافیکی) هم‌زمان اجرا نمی‌شود؛ هرکدام را شروع کنید دیگری بسته می‌شود.
+[Unit]
+Description=Fox SSH auto-connect (profile from /etc/foxssh)
+Documentation=man:foxssh(1)
+After=network-online.target nss-lookup.target
+Wants=network-online.target
+Conflicts=foxssh.service
+ConditionPathExists=/etc/foxssh/profiles.d
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+ExecStartPre=/usr/lib/foxssh/foxssh-prepare
+ExecStart=/usr/lib/foxssh/foxssh-run
+ExecStopPost=/usr/lib/foxssh/foxssh-down
+KillMode=control-group
+TimeoutStopSec=10
+# خطای شبکه/سرور → هر ۳۰ ثانیه دوباره؛ خطای پیکربندی (کد ۷۸: کانفیگ ناقص یا نبودن پروفایل) → تلاش مجدد ندارد
+Restart=on-failure
+RestartSec=30
+RestartPreventExitStatus=78
+
+[Install]
+WantedBy=multi-user.target

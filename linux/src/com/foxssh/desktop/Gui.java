@@ -702,7 +702,7 @@ public final class Gui {
 
     private static boolean systemctlActive() {
         try {
-            Process p = new ProcessBuilder("systemctl", "is-active", "--quiet", "foxssh.service").start();
+            Process p = new ProcessBuilder("systemctl", "is-active", "--quiet", "foxssh.service", "foxssh-auto.service").start();
             return p.waitFor() == 0;
         } catch (Exception e) {
             return false;

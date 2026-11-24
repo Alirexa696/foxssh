@@ -1,0 +1,16 @@
+# bash completion for foxssh
+_foxssh() {
+  local cur prev cmds
+  cur="${COMP_WORDS[COMP_CWORD]}"; prev="${COMP_WORDS[COMP_CWORD-1]}"
+  cmds="connect disconnect status logs list show add edit remove select import dns bypass lang update-list forget-keys service help"
+  if [ "$COMP_CWORD" -eq 1 ]; then COMPREPLY=($(compgen -W "$cmds --hidden --help --version" -- "$cur")); return; fi
+  case "${COMP_WORDS[1]}" in
+    service) [ "$COMP_CWORD" -eq 2 ] && COMPREPLY=($(compgen -W "enable disable start stop restart status" -- "$cur")); return;;
+    bypass) [ "$COMP_CWORD" -eq 2 ] && COMPREPLY=($(compgen -W "on off list add remove" -- "$cur")); return;;
+    lang) COMPREPLY=($(compgen -W "fa en" -- "$cur")); return;;
+    import) COMPREPLY=($(compgen -f -- "$cur")); return;;
+  esac
+  case "$prev" in --pass-file) COMPREPLY=($(compgen -f -- "$cur")); return;; esac
+  COMPREPLY=($(compgen -W "--name --host --port --user --pass-file --pass-stdin --ask-pass --udpgw -L -R -D --any-local --any-remote --clear-tunnels --system --no-system --json --no-wait --dns1 --dns2 --bypass --no-bypass -f -n" -- "$cur"))
+}
+complete -F _foxssh foxssh

@@ -11,10 +11,55 @@
 
 ## نصب
 ```
-sudo apt install ./foxssh_1.0.0_amd64.deb
+sudo apt install ./foxssh_1.1.0_amd64.deb
 ```
 بعد از نصب، «Fox SSH» در منوی برنامه‌ها هست (یا در ترمینال `foxssh`).
 هنگام اتصال، رمز کاربر (sudo) خواسته می‌شود تا تونل سیستم ساخته شود.
+
+## خط فرمان (CLI)
+`foxssh` بدون آرگومان رابط گرافیکی را باز می‌کند؛ با دستور، همان کارهای برنامه را بدون پنجره انجام می‌دهد (`foxssh --help`، `man foxssh`):
+
+```
+foxssh add --name work --host example.com -u me --ask-pass -L 8080:intranet:80 -D 1080
+foxssh list                      # لیست کانفیگ‌ها (* = پیش‌فرض)
+foxssh connect work              # بدون نام = کانفیگ پیش‌فرض؛ بدون ذخیره: foxssh connect --host H -u U --pass-file F
+foxssh status [--json]           # کد خروج 0 = وصل، 3 = قطع
+foxssh logs -f
+foxssh disconnect
+foxssh edit work --port 2022 -D 1081 [--clear-tunnels]
+foxssh remove work | select work | show work [--show-pass] | import FILE
+foxssh dns 1.1.1.1 8.8.8.8
+foxssh bypass on|off|list|add example.ir|remove 10.0.0.0/8
+foxssh update-list | forget-keys | lang fa|en
+```
+- رمز را بهتر است با `--pass-file`، `--pass-stdin`، `--ask-pass` یا متغیر `FOXSSH_PASS` بدهید (`--pass` در `ps` دیده می‌شود).
+- پرچم‌های `-L SRC:HOST:PORT`، `-R SRC:HOST:PORT`، `-D PORT` (چندبار قابل تکرار)، `--any-local`، `--any-remote` معادل بخش «تانل‌ها» در برنامه‌اند.
+- دامنهٔ کاربر (پیش‌فرض برای کاربر عادی): `~/.config/foxssh` — همان ذخیره‌گاه برنامهٔ گرافیکی؛ کانفیگی که با CLI اضافه کنید در GUI هم هست.
+- دامنهٔ سیستم (پیش‌فرض برای root/`sudo` یا با `--system`): `/etc/foxssh`. دستورهای نیازمند root خودکار با pkexec بالا می‌روند. برای برگشت به دامنهٔ کاربر: `--no-system`.
+
+## کانفیگ در /etc و سرویس اتصال خودکار هنگام بوت
+- `/etc/foxssh/foxssh.conf`: تنظیمات (`selected` = کانفیگ پیش‌فرض، `dns1`، `dns2`، `bypass=true|false`، `manual=a;b`، `lang`).
+- `/etc/foxssh/profiles.d/NAME.conf`: یک کانفیگ در هر فایل (دسترسی 600، فقط root). می‌توانید با `sudo foxssh add ...` بسازید یا دستی بنویسید:
+  ```
+  name=office
+  host=vpn.example.com
+  port=22
+  user=me
+  pass=secret
+  udpgw=7300
+  local=8080:intranet:80,9090:db:5432
+  remote=2200:localhost:22
+  dynamic=1080
+  anyLocal=false
+  ```
+- سرویس سیستمی `foxssh-auto.service` با همین کانفیگ‌ها هنگام بوت وصل می‌شود، با قطع‌شدن هر ۳۰ ثانیه دوباره تلاش می‌کند و با `foxssh.service` (اتصال دستی/GUI) هم‌زمان اجرا نمی‌شود:
+  ```
+  sudo foxssh add --name office --host vpn.example.com -u me --pass-file /root/pw
+  sudo foxssh service enable office     # فعال + شروع (بدون نام = کانفیگ پیش‌فرض)
+  sudo foxssh service status | restart | stop | disable
+  journalctl -u foxssh-auto -f          # یا: foxssh logs -f
+  ```
+  اگر کانفیگ ناقص باشد (کد خروج 78) سرویس تلاش مجدد نمی‌کند؛ `systemctl status foxssh-auto` علت را نشان می‌دهد.
 
 ## پیش‌نیازها (خودکار نصب می‌شوند)
 Java (default-jre)، iproute2، polkit، systemd. برای DNS از systemd-resolved (پیش‌فرض Ubuntu) استفاده می‌شود.
@@ -50,7 +95,7 @@ Java (default-jre)، iproute2، polkit، systemd. برای DNS از systemd-reso
 اگر نصب نبودند، `SystemTray` خود جاوا امتحان می‌شود. کلیک روی آیکون: «باز کردن Fox VPN» / «خروج».
 
 بستن پنجره (×) فقط آن را پنهان می‌کند و برنامه در سینی می‌ماند؛ برای بستن کامل از منوی آیکون سینی «Exit» (یا منوی همبرگری) را بزنید.
-اگر آیکون سینی تغییر نکرد، لاگ هلپر در `/tmp/foxssh-tray.log` است.
+آیکون‌ها از لوگوی اصلی با برش دقیق (بدون حاشیهٔ خالی) و در اندازه‌های ۲۲ تا ۱۲۸ ساخته شده‌اند تا در نوار بالا بزرگ و واضح دیده شوند. اگر آیکون سینی تغییر نکرد، لاگ هلپر در `/tmp/foxssh-tray.log` است.
 
 ### اجرای تک‌نمونه و سرویس‌ها
 - فقط یک نمونه از برنامه به‌ازای هر کاربر اجرا می‌شود؛ اجرای دوباره (از منوی برنامه‌ها) همان نمونه را جلو می‌آورد و آیکون سینی تکراری نمی‌سازد.

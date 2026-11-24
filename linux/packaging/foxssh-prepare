@@ -1,0 +1,18 @@
+#!/bin/bash
+# ExecStartPre سرویس foxssh-auto (root): کانفیگ موتور را از /etc/foxssh می‌سازد و در /run/foxssh می‌گذارد.
+# (موتور بعد از خواندن، فایل را پاک می‌کند؛ پس با هر راه‌اندازی/ری‌استارت دوباره ساخته می‌شود.)
+set -e
+RUN=/run/foxssh
+LIB=/usr/lib/foxssh
+install -d -m 755 -o foxssh -g foxssh "$RUN"
+umask 077
+rm -f "$RUN/vpn-up" "$RUN/status.properties" "$RUN/engine.log"
+rc=0
+/usr/bin/java -Xmx64m -XX:TieredStopAtLevel=1 -XX:+UseSerialGC -Djava.awt.headless=true \
+  -cp "$LIB/foxssh.jar:$LIB/lib/jsch.jar" com.foxssh.desktop.Cli emit-config "$@" > "$RUN/config.properties.new" || rc=$?
+if [ "$rc" -ne 0 ]; then
+  rm -f "$RUN/config.properties.new"
+  exit "$rc"
+fi
+chown foxssh:foxssh "$RUN/config.properties.new"
+mv -f "$RUN/config.properties.new" "$RUN/config.properties"

@@ -3,7 +3,7 @@
 #   JSCH_JAR=/path/jsch-0.2.19.jar HEV_BIN=/path/hev-socks5-tunnel ./linux/build.sh
 set -euo pipefail
 cd "$(dirname "$0")"
-VERSION="${VERSION:-1.0.0}"
+VERSION="${VERSION:-1.1.0}"
 ARCH="${ARCH:-$(dpkg --print-architecture)}"
 : "${JSCH_JAR:?JSCH_JAR را تنظیم کنید}"
 : "${HEV_BIN:?HEV_BIN را تنظیم کنید}"
@@ -20,24 +20,29 @@ mkdir -p "$OUT/classes/fonts" && cp assets/fonts/*.ttf "$OUT/classes/fonts/"
 mkdir -p "$OUT/classes/flags" && cp assets/flags/*.png "$OUT/classes/flags/"
 cp assets/worldmap.png "$OUT/classes/worldmap.png"
 cp assets/tray-off.png assets/tray-on.png "$OUT/classes/"
+echo "$VERSION" > "$OUT/classes/version.txt"
 jar --create --file "$OUT/foxssh.jar" -C "$OUT/classes" .
 
 echo "== ساخت بسته"
 P="$OUT/pkg"
 install -d "$P/DEBIAN" "$P/usr/bin" "$P/usr/lib/foxssh/lib" "$P/usr/share/foxssh" \
   "$P/usr/lib/systemd/system" "$P/usr/lib/systemd/user" "$P/usr/share/polkit-1/actions" "$P/usr/share/applications" \
-  "$P/usr/share/icons/hicolor/256x256/apps" "$P/usr/share/icons/hicolor/48x48/apps"
+  "$P/usr/share/icons/hicolor/256x256/apps" "$P/usr/share/icons/hicolor/48x48/apps" \
+  "$P/usr/share/man/man1" "$P/usr/share/bash-completion/completions"
 install -m 755 packaging/foxssh "$P/usr/bin/foxssh"
 install -m 644 "$OUT/foxssh.jar" "$P/usr/lib/foxssh/foxssh.jar"
 install -m 644 "$JSCH_JAR" "$P/usr/lib/foxssh/lib/jsch.jar"
 install -m 755 "$HEV_BIN" "$P/usr/lib/foxssh/hev-socks5-tunnel"
-install -m 755 packaging/foxssh-ctl packaging/foxssh-run packaging/foxssh-down "$P/usr/lib/foxssh/"
+install -m 755 packaging/foxssh-ctl packaging/foxssh-run packaging/foxssh-down packaging/foxssh-prepare "$P/usr/lib/foxssh/"
 install -m 644 packaging/foxssh-tray.py "$P/usr/lib/foxssh/foxssh-tray.py"
 install -m 644 assets/iran_ipv4.txt "$P/usr/share/foxssh/iran_ipv4.txt"
 install -m 644 packaging/foxssh.service "$P/usr/lib/systemd/system/foxssh.service"
+install -m 644 packaging/foxssh-auto.service "$P/usr/lib/systemd/system/foxssh-auto.service"
 install -m 644 packaging/foxssh-tray.service "$P/usr/lib/systemd/user/foxssh-tray.service"
+gzip -9n -c packaging/foxssh.1 > "$P/usr/share/man/man1/foxssh.1.gz"; chmod 644 "$P/usr/share/man/man1/foxssh.1.gz"
+install -m 644 packaging/foxssh.bash-completion "$P/usr/share/bash-completion/completions/foxssh"
 # آیکون‌های سینی در تم hicolor (نام بدون خط‌تیره)
-for n in 22 24 32 48 64; do
+for n in 22 24 32 48 64 128; do
   install -d "$P/usr/share/icons/hicolor/${n}x${n}/apps"
   for s in off on; do
     install -m 644 "assets/tray/foxssh_tray_${s}_${n}.png" "$P/usr/share/icons/hicolor/${n}x${n}/apps/foxssh_tray_${s}.png"

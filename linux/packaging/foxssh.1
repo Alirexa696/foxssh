@@ -1,0 +1,90 @@
+.TH FOXSSH 1 "2026" "Fox SSH" "User Commands"
+.SH NAME
+foxssh \- system-wide SSH tunnel VPN client (GUI and command line)
+.SH SYNOPSIS
+.B foxssh
+.br
+.B foxssh --hidden
+.br
+.B foxssh
+.I COMMAND
+.RI [ OPTIONS ]
+.SH DESCRIPTION
+Without arguments foxssh opens the graphical client. With a command it works headless and does what the GUI does:
+connect/disconnect, profile management, DNS, Iran bypass, logs. All system traffic goes through the SSH tunnel;
+Iranian destinations go direct.
+.SH COMMANDS
+.TP
+.BI "connect [" NAME "] [profile options]"
+Connect. NAME is a profile name or id; without it the default profile is used.
+.B --host
+without NAME connects once without saving. Options:
+.BR --no-wait ", " -q ", " --timeout " SEC, " --dns1 " IP, " --dns2 " IP, " --bypass ", " --no-bypass .
+.TP
+.B disconnect
+Disconnect (aliases: down, stop).
+.TP
+.B status " [" --json ]
+Show state. Exit status 0 if connected, 3 otherwise.
+.TP
+.B logs " [" -n " N] [" -f ]
+Show the engine log; \-f follows.
+.TP
+.B list, show NAME, add, edit NAME, remove NAME, select NAME, import FILE
+Manage profiles.
+.TP
+.B dns [D1 [D2]]
+Show or set DNS servers used inside the tunnel.
+.TP
+.B bypass [on|off|list|add X|remove X]
+Iran bypass. X is an IP, CIDR or domain.
+.TP
+.B lang [fa|en]
+Language of engine messages.
+.TP
+.B update-list, forget-keys
+Update the Iran IP list; forget saved SSH host keys.
+.TP
+.B service enable [NAME] | disable | start | stop | restart | status
+Control foxssh-auto.service, which connects at boot using a profile from /etc/foxssh.
+.SH PROFILE OPTIONS
+.TP
+.BI --name " NAME" ", " --host " HOST" ", " -p,\ --port " PORT" ", " -u,\ --user " USER" ", " --udpgw " PORT"
+.TP
+.BR --pass " PW, " --pass-file " FILE, " --pass-stdin ", " --ask-pass
+Password sources (prefer a file or stdin; --pass is visible in ps). FOXSSH_PASS is used when nothing else is given.
+.TP
+.BI -L " SRC:HOST:PORT" ", " -R " SRC:HOST:PORT" ", " -D " PORT"
+Local, remote and dynamic (SOCKS) forwards; repeatable. On edit they are added to the existing ones.
+.TP
+.BR --any-local ", " --any-remote ", " --no-any-local ", " --no-any-remote
+Listen on 0.0.0.0 instead of 127.0.0.1.
+.TP
+.B --clear-tunnels
+(edit) drop existing forwards first.
+.SH SCOPE
+.TP
+.B --system
+Use /etc/foxssh. This is the default when run as root. Commands that need root re-run themselves through pkexec.
+.TP
+.B --no-system
+Use ~/.config/foxssh (the same store as the GUI). Default for normal users.
+.SH FILES
+.TP
+.I /etc/foxssh/foxssh.conf
+Settings: selected (default profile id), dns1, dns2, bypass (true/false), manual (semicolon separated), lang.
+.TP
+.I /etc/foxssh/profiles.d/*.conf
+One profile per file (mode 600, root only). Keys:
+name, host, port, user, pass, udpgw, local, remote, dynamic (comma separated, e.g. local=8080:intranet:80,9090:db:5432),
+anyLocal, anyRemote. The file name without .conf is the profile id.
+.TP
+.I ~/.config/foxssh/settings.properties
+User-scope profiles and settings.
+.SH EXAMPLE
+.nf
+foxssh add --name work --host example.com -u me --ask-pass -D 1080
+foxssh connect work
+sudo foxssh add --name office --host vpn.example.com -u me --pass-file /root/pw
+sudo foxssh service enable office
+.fi

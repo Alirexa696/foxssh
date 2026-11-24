@@ -1,11 +1,13 @@
 #!/bin/bash
-# نقطهٔ ورود ممتاز (با pkexec از برنامهٔ گرافیکی صدا زده می‌شود).
+# نقطهٔ ورود ممتاز (با pkexec از برنامهٔ گرافیکی و CLI صدا زده می‌شود).
 # فقط چند دستور ثابت را می‌پذیرد؛ کانفیگ از stdin خوانده می‌شود (نه از مسیر فایل کاربر).
 set -e
 RUN=/run/foxssh
 LIB=/usr/lib/foxssh
 case "$1" in
   start)
+    # اگر سرویس بوت (foxssh-auto) فعال است، اول آن را ببند تا پاک‌سازی‌اش کانفیگ تازه را پاک نکند
+    systemctl stop foxssh-auto.service 2>/dev/null || true
     install -d -m 755 -o foxssh -g foxssh "$RUN"
     umask 077
     head -c 65536 > "$RUN/config.properties"
@@ -15,7 +17,7 @@ case "$1" in
     systemctl restart foxssh.service
     ;;
   stop)
-    systemctl stop foxssh.service
+    systemctl stop foxssh.service foxssh-auto.service
     ;;
   update-list)
     install -d -m 755 -o foxssh -g foxssh /var/lib/foxssh
@@ -25,8 +27,15 @@ case "$1" in
   forget-keys)
     rm -f /var/lib/foxssh/known_hosts.properties
     ;;
+  cli)
+    # foxssh (خط فرمان) برای دستورهای نیازمند root (/etc/foxssh، سرویس بوت) خودش را اینجا با دسترسی root اجرا می‌کند
+    shift
+    exec /usr/bin/java -Xmx96m -XX:TieredStopAtLevel=1 -XX:+UseSerialGC -Djava.awt.headless=true \
+      -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8 -Dfile.encoding=UTF-8 \
+      -cp "$LIB/foxssh.jar:$LIB/lib/jsch.jar" com.foxssh.desktop.Cli "$@"
+    ;;
   *)
-    echo "usage: foxssh-ctl start|stop|update-list|forget-keys" >&2
+    echo "usage: foxssh-ctl start|stop|update-list|forget-keys|cli" >&2
     exit 2
     ;;
 esac

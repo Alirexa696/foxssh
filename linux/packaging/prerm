@@ -1,5 +1,5 @@
 #!/bin/sh
-systemctl stop foxssh.service >/dev/null 2>&1 || true
+systemctl stop foxssh.service foxssh-auto.service >/dev/null 2>&1 || true
 case "$1" in
   remove|upgrade|deconfigure)
     # سرویس کاربر را برای کاربران لاگین‌شده متوقف کن، سپس رابط را ببند
@@ -14,6 +14,7 @@ case "$1" in
     ;;
 esac
 if [ "$1" = "remove" ]; then
+  systemctl disable foxssh-auto.service >/dev/null 2>&1 || true
   systemctl --global disable foxssh-tray.service >/dev/null 2>&1 || true
 fi
 exit 0

@@ -40,7 +40,7 @@ public final class Engine {
     private volatile boolean running = true;
     private volatile DSshTunnel tunnel;
     private volatile int socksPort;
-    private volatile String state = "connecting", error = "", banner = "";
+    private volatile String state = "connecting", error = "", banner = "", profileName = "", server = "";
     private volatile long since;
     private boolean fa = true;
     private final List<Tunnel> tunnelList = new ArrayList<>();
@@ -107,6 +107,8 @@ public final class Engine {
         final int port = toInt(cfg.getProperty("port"), 22);
         final String user = cfg.getProperty("user", "");
         final String pass = cfg.getProperty("pass", "");
+        profileName = cfg.getProperty("name", "");
+        server = host + ":" + port;
         int udpgw = toInt(cfg.getProperty("udpgw"), 7300);
         boolean bypass = !"false".equals(cfg.getProperty("bypass", "true"));
         fa = !"en".equals(cfg.getProperty("lang", "fa"));
@@ -323,6 +325,8 @@ public final class Engine {
         p.setProperty("state", state);
         p.setProperty("error", error);
         p.setProperty("banner", banner);
+        p.setProperty("profile", profileName);
+        p.setProperty("server", server);
         p.setProperty("socksPort", String.valueOf(socksPort));
         p.setProperty("since", String.valueOf(since));
         p.setProperty("tx", String.valueOf(tx.get()));

@@ -22,6 +22,7 @@ final class Store {
         int port = 22, udpgw = 7300;
         String tunnels = "";
         boolean anyLocal, anyRemote;
+        String src = "";   // مسیر فایل برای کانفیگ‌های /etc/foxssh/profiles.d (برای برنامهٔ گرافیکی خالی)
 
         String title() { return name.isEmpty() ? host : name; }
     }
@@ -30,13 +31,42 @@ final class Store {
     private final Properties p = new Properties();
 
     Store() {
-        String xdg = System.getenv("XDG_CONFIG_HOME");
-        Path base = xdg != null && !xdg.isEmpty() ? Paths.get(xdg) : Paths.get(System.getProperty("user.home"), ".config");
-        file = base.resolve("foxssh").resolve("settings.properties");
+        this(defaultFile());
+    }
+
+    /** ذخیره‌گاه روی یک فایل دلخواه (مثلاً /etc/foxssh/foxssh.conf برای حالت سیستمی CLI). */
+    Store(Path file) {
+        this.file = file;
         try (Reader r = Files.newBufferedReader(file, StandardCharsets.UTF_8)) {
             p.load(r);
         } catch (IOException ignored) {
         }
+    }
+
+    static Path defaultFile() {
+        String xdg = System.getenv("XDG_CONFIG_HOME");
+        Path base = xdg != null && !xdg.isEmpty() ? Paths.get(xdg) : Paths.get(System.getProperty("user.home"), ".config");
+        return base.resolve("foxssh").resolve("settings.properties");
+    }
+
+    Path path() { return file; }
+
+    /** مقدار خام یک کلید (برای تنظیمات CLI). */
+    synchronized String get(String k, String d) { return p.getProperty(k, d); }
+
+    synchronized void put(String k, String v) throws IOException {
+        if (v == null) p.remove(k);
+        else p.setProperty(k, v);
+        saveOrThrow();
+    }
+
+    /** مثل save() ولی خطا را پرتاب می‌کند (برای CLI تا پیام خطای مجوز نشان داده شود). */
+    synchronized void saveOrThrow() throws IOException {
+        Files.createDirectories(file.getParent());
+        try (Writer w = Files.newBufferedWriter(file, StandardCharsets.UTF_8)) {
+            p.store(w, null);
+        }
+        Files.setPosixFilePermissions(file, PosixFilePermissions.fromString("rw-------"));
     }
 
     private synchronized void save() {
@@ -170,20 +200,26 @@ final class Store {
 
     /** متن کانفیگ برای موتور (از stdin به foxssh-ctl داده می‌شود). */
     String engineConfig(Profile f, String user, String pass) {
+        return engineConfig(f, user, pass, dns1(), dns2(), bypass(), manual(), lang());
+    }
+
+    /** نسخهٔ صریح (CLI می‌تواند تنظیمات را از /etc یا پرچم‌ها بدهد). */
+    static String engineConfig(Profile f, String user, String pass, String dns1, String dns2, boolean bypass, List<String> manual, String lang) {
         Properties c = new Properties();
+        c.setProperty("name", f.title());
         c.setProperty("host", f.host);
         c.setProperty("port", String.valueOf(f.port));
         c.setProperty("user", user);
         c.setProperty("pass", pass);
         c.setProperty("udpgw", String.valueOf(f.udpgw));
-        c.setProperty("dns1", dns1());
-        c.setProperty("dns2", dns2());
-        c.setProperty("bypass", String.valueOf(bypass()));
-        c.setProperty("manual", String.join(";", manual()));
+        c.setProperty("dns1", dns1);
+        c.setProperty("dns2", dns2);
+        c.setProperty("bypass", String.valueOf(bypass));
+        c.setProperty("manual", String.join(";", manual));
         c.setProperty("tunnels", f.tunnels);
         c.setProperty("anyLocal", String.valueOf(f.anyLocal));
         c.setProperty("anyRemote", String.valueOf(f.anyRemote));
-        c.setProperty("lang", lang());
+        c.setProperty("lang", lang);
         java.io.StringWriter w = new java.io.StringWriter();
         try {
             c.store(w, null);
@@ -192,7 +228,7 @@ final class Store {
         return w.toString();
     }
 
-    private static int toInt(String s, int d) {
+    static int toInt(String s, int d) {
         try {
             return Integer.parseInt(s.trim());
         } catch (Exception e) {

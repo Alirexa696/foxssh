@@ -1,3 +1,13 @@
 #!/bin/sh
-exec /usr/bin/java -Xmx256m -Dawt.useSystemAAFontSettings=on -Dswing.aatext=true \
-  -cp /usr/lib/foxssh/foxssh.jar:/usr/lib/foxssh/lib/jsch.jar com.foxssh.desktop.Gui "$@"
+# بدون آرگومان (یا --hidden / --gui) رابط گرافیکی؛ در غیر این‌صورت خط فرمان (foxssh --help)
+CP=/usr/lib/foxssh/foxssh.jar:/usr/lib/foxssh/lib/jsch.jar
+case "${1-}" in
+  ""|--hidden|--gui)
+    [ "${1-}" = "--gui" ] && shift
+    exec /usr/bin/java -Xmx256m -Dawt.useSystemAAFontSettings=on -Dswing.aatext=true \
+      -cp "$CP" com.foxssh.desktop.Gui "$@" ;;
+  *)
+    exec /usr/bin/java -Xmx96m -Xshare:auto -XX:TieredStopAtLevel=1 -XX:+UseSerialGC \
+      -Djava.awt.headless=true -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8 -Dfile.encoding=UTF-8 \
+      -cp "$CP" com.foxssh.desktop.Cli "$@" ;;
+esac
