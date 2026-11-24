@@ -40,6 +40,7 @@ public final class Engine {
     private volatile boolean running = true;
     private volatile DSshTunnel tunnel;
     private volatile int socksPort;
+    private volatile String serverIp = "";
     private volatile String state = "connecting", error = "", banner = "", profileName = "", server = "";
     private volatile long since;
     private boolean fa = true;
@@ -112,6 +113,13 @@ public final class Engine {
         int udpgw = toInt(cfg.getProperty("udpgw"), 7300);
         boolean bypass = !"false".equals(cfg.getProperty("bypass", "true"));
         fa = !"en".equals(cfg.getProperty("lang", "fa"));
+        String bindIp = cfg.getProperty("bindIp", "").trim();
+        if (!bindIp.isEmpty()) {
+            try {
+                com.foxssh.vpn.core.DirectBind.local = InetAddress.getByName(bindIp);
+            } catch (IOException ignored) {
+            }
+        }
         tunnelList.addAll(Tunnel.parseList(cfg.getProperty("tunnels", "")));
         anyLocal = "true".equals(cfg.getProperty("anyLocal"));
         anyRemote = "true".equals(cfg.getProperty("anyRemote"));
@@ -130,6 +138,7 @@ public final class Engine {
             log(m("اتصال به ", "Connecting to ") + host + ":" + port + m(" با کاربر ", " as ") + user);
             // تبدیل نام به IP «قبل» از تغییر مسیرها؛ برای اتصال مجدد هم از همین IP استفاده می‌شود
             final String ip = InetAddress.getByName(host).getHostAddress();
+            serverIp = ip;
             writeStatus();
 
             final BypassRules rules = new BypassRules();
@@ -328,6 +337,7 @@ public final class Engine {
         p.setProperty("profile", profileName);
         p.setProperty("server", server);
         p.setProperty("socksPort", String.valueOf(socksPort));
+        p.setProperty("serverIp", serverIp);
         p.setProperty("since", String.valueOf(since));
         p.setProperty("tx", String.valueOf(tx.get()));
         p.setProperty("rx", String.valueOf(rx.get()));

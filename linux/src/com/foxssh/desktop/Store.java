@@ -44,9 +44,7 @@ final class Store {
     }
 
     static Path defaultFile() {
-        String xdg = System.getenv("XDG_CONFIG_HOME");
-        Path base = xdg != null && !xdg.isEmpty() ? Paths.get(xdg) : Paths.get(System.getProperty("user.home"), ".config");
-        return base.resolve("foxssh").resolve("settings.properties");
+        return Platform.configDir().resolve("settings.properties");
     }
 
     Path path() { return file; }
@@ -66,7 +64,10 @@ final class Store {
         try (Writer w = Files.newBufferedWriter(file, StandardCharsets.UTF_8)) {
             p.store(w, null);
         }
-        Files.setPosixFilePermissions(file, PosixFilePermissions.fromString("rw-------"));
+        try {
+            Files.setPosixFilePermissions(file, PosixFilePermissions.fromString("rw-------"));
+        } catch (UnsupportedOperationException ignored) {
+        }
     }
 
     private synchronized void save() {

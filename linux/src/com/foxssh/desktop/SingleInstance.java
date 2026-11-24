@@ -31,9 +31,7 @@ final class SingleInstance {
     }
 
     private static Path configDir() {
-        String xdg = System.getenv("XDG_CONFIG_HOME");
-        Path base = xdg != null && !xdg.isEmpty() ? Paths.get(xdg) : Paths.get(System.getProperty("user.home"), ".config");
-        return base.resolve("foxssh");
+        return Platform.configDir();
     }
 
     /**

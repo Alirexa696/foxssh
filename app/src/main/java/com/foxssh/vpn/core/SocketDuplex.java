@@ -18,6 +18,7 @@ public final class SocketDuplex implements Duplex {
         Socket s = new Socket();
         try {
             s.setTcpNoDelay(true);
+            if (DirectBind.local != null) s.bind(new InetSocketAddress(DirectBind.local, 0));
             s.connect(new InetSocketAddress(host, port), timeoutMs);
         } catch (IOException e) {
             try {

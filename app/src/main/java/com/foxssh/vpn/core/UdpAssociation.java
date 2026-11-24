@@ -165,7 +165,8 @@ final class UdpAssociation implements UdpGwMux.Sink, Closeable {
         DatagramSocket d;
         synchronized (this) {
             if (direct == null) {
-                final DatagramSocket nd = new DatagramSocket();
+                final DatagramSocket nd = DirectBind.local != null
+                        ? new DatagramSocket(new java.net.InetSocketAddress(DirectBind.local, 0)) : new DatagramSocket();
                 direct = nd;
                 pool.execute(new Runnable() {
                     @Override

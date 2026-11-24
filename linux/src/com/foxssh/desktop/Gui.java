@@ -58,12 +58,12 @@ import java.util.function.Supplier;
 /** برنامهٔ گرافیکی Fox VPN برای لینوکس. تونل سیستم را از طریق pkexec و سرویس foxssh راه می‌اندازد. */
 public final class Gui {
     private static final String CTL = "/usr/lib/foxssh/foxssh-ctl";
-    private static final Path RUN = Paths.get("/run/foxssh");
+    private static final Path RUN = Platform.runDir();
     private static final int LOG_H = 200;
     private static final int WIN_W = 500, WIN_H = 428;
 
     // نقاط تزریق برای تست ظاهر (در حالت عادی دست نمی‌خورند)
-    static BooleanSupplier activeFn = Gui::systemctlActive;
+    static BooleanSupplier activeFn = Platform.WIN ? WinCtl::active : Gui::systemctlActive;
     static Supplier<Properties> statusFn = Gui::readStatusFile;
     static volatile String demoIp;
     static volatile String demoCc;
@@ -109,6 +109,10 @@ public final class Gui {
     public static void main(String[] args) {
         System.setProperty("awt.useSystemAAFontSettings", "on");
         System.setProperty("swing.aatext", "true");
+        if (Platform.WIN && !WinCtl.isAdmin()) {
+            // تونل سیستم در ویندوز نیاز به Administrator دارد؛ یک‌بار UAC و اجرای دوبارهٔ همین برنامه
+            if (WinCtl.relaunchElevated(args)) System.exit(0);
+        }
         final boolean hidden = java.util.Arrays.asList(args).contains("--hidden"); // شروع بی‌صدا در سینی (سرویس کاربر)
         if (!SingleInstance.acquire(hidden, () -> {
             Gui g = instance;
@@ -675,6 +679,15 @@ public final class Gui {
 
     /** اجرای foxssh-ctl با pkexec؛ null = موفق. */
     private static String ctl(String cmd, String stdin) {
+        if (Platform.WIN) {
+            switch (cmd) {
+                case "start": return WinCtl.start(stdin == null ? "" : stdin);
+                case "stop": return WinCtl.stop();
+                case "update-list": return WinCtl.updateList();
+                case "forget-keys": return WinCtl.forgetKeys();
+                default: return "unsupported: " + cmd;
+            }
+        }
         try {
             Process pr = new ProcessBuilder("pkexec", CTL, cmd).redirectErrorStream(true).start();
             try (OutputStream o = pr.getOutputStream()) {
