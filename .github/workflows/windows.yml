@@ -86,11 +86,14 @@ jobs:
           jar --create --file build/input/foxssh.jar --main-class com.foxssh.desktop.Gui -C build/classes .
           jpackage --type app-image --name FoxVPN --input build/input --main-jar foxssh.jar --main-class com.foxssh.desktop.Gui `
             --icon windows/foxvpn.ico --dest build/dist --app-version $env:FOX_VERSION `
+            --jlink-options "--strip-debug --no-man-pages --no-header-files" `
             --java-options "-Xmx192m" --java-options "-Dfile.encoding=UTF-8" `
             --add-modules java.desktop,java.logging,java.naming,java.management,java.sql,jdk.crypto.ec,jdk.unsupported
           if ($LASTEXITCODE -ne 0) { exit 1 }
           New-Item -ItemType Directory -Force -Path build/dist/FoxVPN/tools | Out-Null
           Copy-Item build/tools/* build/dist/FoxVPN/tools/
+          Get-ChildItem build/dist/FoxVPN/runtime/bin
+          if (-not (Test-Path build/dist/FoxVPN/runtime/bin/java.exe)) { Write-Error 'java.exe missing in runtime'; exit 1 }
           Get-ChildItem build/dist/FoxVPN
           Compress-Archive -Path build/dist/FoxVPN -DestinationPath build/FoxVPN-portable.zip
 
