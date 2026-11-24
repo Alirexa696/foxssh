@@ -219,7 +219,7 @@ public final class Gui {
         Ui.WinGlyph minimize = new Ui.WinGlyph(Ui.WinGlyph.MIN);
         minimize.addActionListener(e -> frame.setState(JFrame.ICONIFIED));
         Ui.WinGlyph close = new Ui.WinGlyph(Ui.WinGlyph.CLOSE);
-        close.addActionListener(e -> frame.dispose());
+        close.addActionListener(e -> closeWindow());
         controls.add(minimize);
         controls.add(new Ui.VDivider(18));
         controls.add(close);
@@ -404,7 +404,10 @@ public final class Gui {
         frame = new JFrame("Fox VPN");
         frame.setUndecorated(true);
         frame.setBackground(Ui.BG0);
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+        frame.addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override public void windowClosing(java.awt.event.WindowEvent e) { closeWindow(); }
+        });
         URL logo = Gui.class.getResource("/logo.png");
         if (logo != null) frame.setIconImage(new ImageIcon(logo).getImage());
         L.setFa(!"en".equals(store.lang()));
@@ -429,6 +432,12 @@ public final class Gui {
     }
 
     private volatile boolean trayConnected;
+
+    /** بستن پنجره: اگر آیکون سینی هست فقط پنهان می‌شود (برنامه در سینی می‌ماند و فقط با «Exit» سینی بسته می‌شود). */
+    private void closeWindow() {
+        if (tray != null) frame.setVisible(false);
+        else System.exit(0);
+    }
 
     /** پنجره را از حالت کمینه/پشت سایر پنجره‌ها بیرون می‌آورد. */
     private void raiseWindow() {

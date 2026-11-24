@@ -39,6 +39,12 @@ def send(msg):
 ind = AI.Indicator.new("foxssh", "foxssh-off", AI.IndicatorCategory.APPLICATION_STATUS)
 ind.set_icon_theme_path(icon_dir)
 ind.set_icon_full("foxssh-off", "Disconnected")
+# آیکون «وصل» هم به‌عنوان آیکون حالت ATTENTION ثبت می‌شود تا شل‌هایی که تعویض نام آیکون را دیر می‌گیرند
+# هم با عوض‌شدن status آیکون را عوض کنند.
+try:
+    ind.set_attention_icon_full("foxssh-on", "Connected")
+except Exception:
+    pass
 ind.set_title("Fox VPN")
 ind.set_status(AI.IndicatorStatus.ACTIVE)
 
@@ -59,7 +65,14 @@ except Exception:
 
 
 def set_state(on):
-    ind.set_icon_full("foxssh-on" if on else "foxssh-off", "Connected" if on else "Disconnected")
+    try:
+        ind.set_icon_full("foxssh-on" if on else "foxssh-off", "Connected" if on else "Disconnected")
+        ind.set_status(AI.IndicatorStatus.ATTENTION if on else AI.IndicatorStatus.ACTIVE)
+        sys.stderr.write("state=%s\n" % ("on" if on else "off"))
+        sys.stderr.flush()
+    except Exception as e:  # برای عیب‌یابی در /tmp/foxssh-tray.log
+        sys.stderr.write("set_state error: %r\n" % (e,))
+        sys.stderr.flush()
     return False
 
 

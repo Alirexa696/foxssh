@@ -83,7 +83,7 @@ final class Tray {
             f.toFile().deleteOnExit();
         }
         ProcessBuilder pb = new ProcessBuilder("python3", py.getPath(), dir.toString(), showLabel, exitLabel);
-        pb.redirectError(ProcessBuilder.Redirect.DISCARD);
+        pb.redirectError(ProcessBuilder.Redirect.to(new File(System.getProperty("java.io.tmpdir"), "foxssh-tray.log")));
         Process p = pb.start();
         BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream(), StandardCharsets.UTF_8));
         // اولین خط «ready» یعنی AppIndicator بالا آمد؛ اگر اسکریپت بلافاصله خارج شد (کتابخانه نصب نیست) -> fallback
