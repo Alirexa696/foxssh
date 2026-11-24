@@ -7,11 +7,20 @@ import android.graphics.Color;
 import android.net.VpnService;
 import android.os.Build;
 import android.os.Bundle;
-import android.widget.Button;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.os.Handler;
+import android.os.Looper;
+import android.view.View;
+import android.widget.ImageView;
+import android.widget.PopupMenu;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.io.InputStream;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import android.text.InputType;
 import android.widget.EditText;
 import java.util.Locale;
@@ -21,9 +30,15 @@ public final class MainActivity extends Activity implements VpnState.Listener {
     private static final int REQ_VPN = 100;
 
     private Prefs prefs;
-    private TextView status, stats, error;
-    private Button connect, banner;
+    private TextView status, stats, error, proto, ipValue, ipLabel, country;
+    private PowerView power;
+    private ImageView flag, statusCheck;
+    private View glow;
     private TextView profName, profSub;
+    private final Handler ui = new Handler(Looper.getMainLooper());
+    private final Map<String, Bitmap> flags = new HashMap<>();
+    private int lastStatus = -1;
+    private int ipGen;
     private EditText user, pass;
     private boolean passVisible;
     private AlertDialog bannerDialog;
@@ -36,16 +51,34 @@ public final class MainActivity extends Activity implements VpnState.Listener {
         status = findViewById(R.id.status);
         stats = findViewById(R.id.stats);
         error = findViewById(R.id.error);
-        connect = findViewById(R.id.connect);
-        banner = findViewById(R.id.banner);
+        power = findViewById(R.id.power);
+        proto = findViewById(R.id.proto);
+        ipValue = findViewById(R.id.ipValue);
+        ipLabel = findViewById(R.id.ipLabel);
+        country = findViewById(R.id.country);
+        flag = findViewById(R.id.flag);
+        statusCheck = findViewById(R.id.statusCheck);
+        glow = findViewById(R.id.glow);
         profName = findViewById(R.id.profName);
         profSub = findViewById(R.id.profSub);
         user = findViewById(R.id.user);
         pass = findViewById(R.id.pass);
-        Bar.setup(this, R.string.app_name, false, true);
-        Bar.action1(this, R.drawable.ic_settings, () -> startActivity(new Intent(this, SettingsActivity.class)));
-        Bar.action2(this, R.drawable.ic_list, () -> startActivity(new Intent(this, ProfilesActivity.class)));
-        findViewById(R.id.fabLog).setOnClickListener(v -> startActivity(new Intent(this, LogActivity.class)));
+        findViewById(R.id.menuBtn).setOnClickListener(v -> {
+            PopupMenu m = new PopupMenu(this, v);
+            m.getMenu().add(0, 1, 0, R.string.menu_configs);
+            m.getMenu().add(0, 2, 1, R.string.menu_settings);
+            m.getMenu().add(0, 3, 2, R.string.menu_logs);
+            m.setOnMenuItemClickListener(it -> {
+                switch (it.getItemId()) {
+                    case 1: startActivity(new Intent(this, ProfilesActivity.class)); break;
+                    case 2: startActivity(new Intent(this, SettingsActivity.class)); break;
+                    default: startActivity(new Intent(this, LogActivity.class));
+                }
+                return true;
+            });
+            m.show();
+        });
+        findViewById(R.id.logsBar).setOnClickListener(v -> startActivity(new Intent(this, LogActivity.class)));
         findViewById(R.id.profileSelect).setOnClickListener(v -> chooseProfile());
         findViewById(R.id.eye).setOnClickListener(v -> {
             passVisible = !passVisible;
@@ -55,14 +88,13 @@ public final class MainActivity extends Activity implements VpnState.Listener {
             pass.setSelection(Math.max(0, sel));
         });
 
-        connect.setOnClickListener(v -> {
+        power.setOnClickListener(v -> {
             if (VpnState.active()) {
                 startService(new Intent(this, VpnTunnelService.class).setAction(VpnTunnelService.ACTION_DISCONNECT));
             } else {
                 tryConnect();
             }
         });
-        banner.setOnClickListener(v -> showBanner());
         if (Build.VERSION.SDK_INT >= 33) {
             requestPermissions(new String[]{"android.permission.POST_NOTIFICATIONS"}, 1);
         }
@@ -95,12 +127,14 @@ public final class MainActivity extends Activity implements VpnState.Listener {
         if (p == null) {
             profName.setText(R.string.no_profile_selected);
             profSub.setText(R.string.tap_to_add);
+            proto.setText("SSH  |  22");
             user.setText("");
             pass.setText("");
             return;
         }
         profName.setText(p.title());
-        profSub.setText("SSH  •  " + p.host + ":" + p.port);
+        profSub.setText(p.host + ":" + p.port);
+        proto.setText("SSH  |  " + p.port);
         user.setText(p.user);
         pass.setText(p.pass);
     }
@@ -180,9 +214,17 @@ public final class MainActivity extends Activity implements VpnState.Listener {
         status.setText(res);
         status.setTextColor(s == VpnState.CONNECTED ? getColor(R.color.ok)
                 : active ? getColor(R.color.accent) : getColor(R.color.muted));
-        connect.setText(active ? R.string.disconnect : R.string.connect);
+        power.setState(s == VpnState.CONNECTED ? PowerView.ON : active ? PowerView.BUSY : PowerView.OFF);
+        statusCheck.setVisibility(s == VpnState.CONNECTED ? View.VISIBLE : View.GONE);
+        glow.setBackgroundResource(s == VpnState.CONNECTED ? R.drawable.glow_ok
+                : active ? R.drawable.glow_busy : R.drawable.glow_off);
+        ipLabel.setText(s == VpnState.CONNECTED ? R.string.your_ip_vpn : R.string.your_ip);
         user.setEnabled(!active);
         pass.setEnabled(!active);
+        if (s != lastStatus) {
+            lastStatus = s;
+            refreshIp(s);
+        }
 
         String err = VpnState.error;
         error.setVisibility(!active && !err.isEmpty() ? TextView.VISIBLE : TextView.GONE);
@@ -198,11 +240,52 @@ public final class MainActivity extends Activity implements VpnState.Listener {
         }
 
         boolean hasBanner = !clean(VpnState.banner).isEmpty();
-        banner.setVisibility(s == VpnState.CONNECTED && hasBanner ? Button.VISIBLE : Button.GONE);
         if (s == VpnState.CONNECTED && hasBanner && !VpnState.bannerShown) {
             VpnState.bannerShown = true;
             showBanner();
         }
+    }
+
+    /** IP و پرچم: وصل = از داخل تونل (IP سرور)، قطع = IP واقعی. */
+    private void refreshIp(int s) {
+        final int gen = ++ipGen;
+        ipValue.setText("…");
+        flag.setVisibility(View.GONE);
+        country.setText("");
+        if (s == VpnState.CONNECTING || s == VpnState.RECONNECTING) return;
+        final int port = s == VpnState.CONNECTED ? VpnState.socksPort : 0;
+        final boolean viaTunnel = port > 0;
+        ui.postDelayed(() -> new Thread(() -> {
+            final String[] r = IpLookup.fetch(port);
+            runOnUiThread(() -> {
+                if (gen != ipGen || isFinishing()) return;
+                if (s == VpnState.CONNECTED && !viaTunnel) return;
+                if (r == null) {
+                    ipValue.setText(R.string.unknown_ip);
+                    return;
+                }
+                ipValue.setText(r[0]);
+                showCountry(r[1]);
+            });
+        }).start(), s == VpnState.CONNECTED ? 600 : 1200);
+    }
+
+    private void showCountry(String cc) {
+        if (cc == null || cc.length() != 2) return;
+        Bitmap bmp = flags.get(cc);
+        if (bmp == null) {
+            try (InputStream in = getAssets().open("flags/" + cc.toLowerCase(Locale.ROOT) + ".png")) {
+                bmp = BitmapFactory.decodeStream(in);
+            } catch (Exception ignored) {
+            }
+            if (bmp != null) flags.put(cc, bmp);
+        }
+        if (bmp != null) {
+            flag.setImageBitmap(bmp);
+            flag.setVisibility(View.VISIBLE);
+        }
+        String n = new Locale("", cc).getDisplayCountry(new Locale("fa"));
+        country.setText(n.isEmpty() ? cc : n);
     }
 
     private void showBanner() {

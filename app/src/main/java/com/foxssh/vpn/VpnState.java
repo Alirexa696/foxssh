@@ -19,6 +19,8 @@ public final class VpnState {
     public static volatile boolean bannerShown;
     public static volatile long since;
     public static volatile long tx, rx;
+    /** پورت SOCKS محلی وقتی وصل است (برای پرسیدن IP از داخل تونل)، وگرنه 0. */
+    public static volatile int socksPort;
 
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
     private static final CopyOnWriteArrayList<Listener> LISTENERS = new CopyOnWriteArrayList<>();

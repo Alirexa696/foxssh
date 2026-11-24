@@ -116,6 +116,7 @@ public final class VpnTunnelService extends VpnService {
             mux = new UdpGwMux(src, pr.udpgw, 200);
             socks = new Socks5Server(src, r, mux);
             int port = socks.start();
+            VpnState.socksPort = port;
             AppLog.add("SOCKS محلی روی 127.0.0.1:" + port + "، udpgw=" + pr.udpgw);
 
             Builder b = new Builder()
@@ -277,6 +278,7 @@ public final class VpnTunnelService extends VpnService {
         tunnel = null;
         if (t != null) t.close();
         VpnState.since = 0;
+        VpnState.socksPort = 0;
         setStatus(VpnState.DISCONNECTED);
         worker = null;
         stopForeground(true);
