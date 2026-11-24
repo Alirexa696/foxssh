@@ -1,0 +1,20 @@
+# سرویس «کاربر» (systemd --user): Fox VPN را هنگام ورود به دسکتاپ بی‌صدا در سینی بالا می‌آورد.
+#   systemctl --user status foxssh-tray      وضعیت
+#   systemctl --user stop foxssh-tray        بستن
+#   systemctl --user disable foxssh-tray     عدم اجرای خودکار هنگام ورود
+[Unit]
+Description=Fox VPN (system tray)
+After=graphical-session.target
+PartOf=graphical-session.target
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/foxssh --hidden
+SuccessExitStatus=143
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=graphical-session.target

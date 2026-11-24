@@ -4,8 +4,10 @@
 #   جاوا -> این اسکریپت:  "on" (وصل) | "off" (قطع)
 #   این اسکریپت -> جاوا:  "show" | "exit"
 # استفاده: foxssh-tray.py <پوشهٔ آیکون‌ها> <متن «نمایش»> <متن «خروج»>
+import os
 import sys
 import threading
+import time
 
 import gi
 
@@ -28,6 +30,15 @@ show_label = sys.argv[2] if len(sys.argv) > 2 else "Open"
 exit_label = sys.argv[3] if len(sys.argv) > 3 else "Exit"
 
 
+ICON_OFF = "foxssh_tray_off"  # بدون خط‌تیره: GTK نام‌های دارای «-» را در نبودنِ آیکون به نام کوتاه‌تر (foxssh) برمی‌گرداند
+ICON_ON = "foxssh_tray_on"
+
+
+def log(msg):
+    sys.stderr.write("%s pid=%d %s\n" % (time.strftime("%H:%M:%S"), os.getpid(), msg))
+    sys.stderr.flush()
+
+
 def send(msg):
     try:
         sys.stdout.write(msg + "\n")
@@ -36,13 +47,23 @@ def send(msg):
         Gtk.main_quit()
 
 
-ind = AI.Indicator.new("foxssh", "foxssh-off", AI.IndicatorCategory.APPLICATION_STATUS)
+log("start icon_dir=%s lib=%s" % (icon_dir, AI.__name__))
+try:  # عیب‌یابی: آیکون‌ها در تم پیدا می‌شوند؟ (مسیر فایل یا None)
+    theme = Gtk.IconTheme.get_default()
+    theme.append_search_path(icon_dir)
+    for _n in (ICON_OFF, ICON_ON):
+        _i = theme.lookup_icon(_n, 24, 0)
+        log("lookup %s -> %s" % (_n, _i.get_filename() if _i else None))
+except Exception as e:
+    log("lookup error: %r" % (e,))
+
+ind = AI.Indicator.new("foxssh", ICON_OFF, AI.IndicatorCategory.APPLICATION_STATUS)
 ind.set_icon_theme_path(icon_dir)
-ind.set_icon_full("foxssh-off", "Disconnected")
+ind.set_icon_full(ICON_OFF, "Disconnected")
 # آیکون «وصل» هم به‌عنوان آیکون حالت ATTENTION ثبت می‌شود تا شل‌هایی که تعویض نام آیکون را دیر می‌گیرند
 # هم با عوض‌شدن status آیکون را عوض کنند.
 try:
-    ind.set_attention_icon_full("foxssh-on", "Connected")
+    ind.set_attention_icon_full(ICON_ON, "Connected")
 except Exception:
     pass
 ind.set_title("Fox VPN")
@@ -66,13 +87,11 @@ except Exception:
 
 def set_state(on):
     try:
-        ind.set_icon_full("foxssh-on" if on else "foxssh-off", "Connected" if on else "Disconnected")
+        ind.set_icon_full(ICON_ON if on else ICON_OFF, "Connected" if on else "Disconnected")
         ind.set_status(AI.IndicatorStatus.ATTENTION if on else AI.IndicatorStatus.ACTIVE)
-        sys.stderr.write("state=%s\n" % ("on" if on else "off"))
-        sys.stderr.flush()
+        log("state=%s" % ("on" if on else "off"))
     except Exception as e:  # برای عیب‌یابی در /tmp/foxssh-tray.log
-        sys.stderr.write("set_state error: %r\n" % (e,))
-        sys.stderr.flush()
+        log("set_state error: %r" % (e,))
     return False
 
 

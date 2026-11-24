@@ -9,3 +9,7 @@ ExecStopPost=/usr/lib/foxssh/foxssh-down
 KillMode=control-group
 TimeoutStopSec=10
 Restart=no
+
+[Install]
+# عمداً پیش‌فرض فعال نمی‌شود (بدون کانفیگ اتصال معنی ندارد)؛ برنامه آن را با pkexec start/stop می‌کند.
+WantedBy=multi-user.target

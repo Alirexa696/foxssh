@@ -5,4 +5,23 @@ if ! getent passwd foxssh >/dev/null; then
 fi
 install -d -m 755 -o foxssh -g foxssh /var/lib/foxssh
 systemctl daemon-reload >/dev/null 2>&1 || true
+
+# آیکون‌های سینی (foxssh_tray_off/on) در تم hicolor
+gtk-update-icon-cache -q -t -f /usr/share/icons/hicolor >/dev/null 2>&1 || true
+
+if [ "$1" = "configure" ]; then
+  # نمونه‌های قدیمیِ رابط (بدون تک‌نمونه‌ای) را ببند تا آیکون سینی تکراری نماند
+  pkill -f 'com.foxssh.desktop.Gui' >/dev/null 2>&1 || true
+  # سرویس کاربر: برای همهٔ کاربران فعال شود (اجرای بی‌صدا در سینی هنگام ورود به دسکتاپ)
+  systemctl --global enable foxssh-tray.service >/dev/null 2>&1 || true
+  # برای کاربرانی که همین الان وارد دسکتاپ شده‌اند هم همین حالا شروع شود
+  for d in /run/user/*; do
+    [ -d "$d" ] || continue
+    uid=${d##*/}
+    [ "$uid" -ge 1000 ] 2>/dev/null || continue
+    u=$(id -nu "$uid" 2>/dev/null) || continue
+    runuser -u "$u" -- env XDG_RUNTIME_DIR="$d" systemctl --user daemon-reload >/dev/null 2>&1 || true
+    runuser -u "$u" -- env XDG_RUNTIME_DIR="$d" systemctl --user restart foxssh-tray.service >/dev/null 2>&1 || true
+  done
+fi
 exit 0

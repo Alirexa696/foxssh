@@ -109,8 +109,20 @@ public final class Gui {
     public static void main(String[] args) {
         System.setProperty("awt.useSystemAAFontSettings", "on");
         System.setProperty("swing.aatext", "true");
-        SwingUtilities.invokeLater(() -> new Gui().show());
+        final boolean hidden = java.util.Arrays.asList(args).contains("--hidden"); // شروع بی‌صدا در سینی (سرویس کاربر)
+        if (!SingleInstance.acquire(hidden, () -> {
+            Gui g = instance;
+            if (g != null && g.frame != null) g.raiseWindow();
+        })) {
+            System.exit(0); // نمونهٔ دیگری در حال اجراست؛ همان را جلو آورد
+        }
+        SwingUtilities.invokeLater(() -> {
+            instance = new Gui();
+            instance.show(hidden);
+        });
     }
+
+    private static volatile Gui instance;
 
     // ───────────── ظاهر ─────────────
 
@@ -400,6 +412,10 @@ public final class Gui {
     }
 
     void show() {
+        show(false);
+    }
+
+    void show(boolean hidden) {
         applyTheme();
         frame = new JFrame("Fox VPN");
         frame.setUndecorated(true);
@@ -417,7 +433,7 @@ public final class Gui {
         fit();
         frame.setLocationRelativeTo(null);
         reloadProfiles();
-        frame.setVisible(true);
+        if (!hidden) frame.setVisible(true);
         SwingUtilities.invokeLater(() -> System.err.println("[fox] power=" + power.getBounds() + " showing=" + power.isShowing()
                 + " parent=" + power.getParent().getBounds()));
         poller.scheduleWithFixedDelay(this::poll, 0, 1, TimeUnit.SECONDS);
@@ -426,6 +442,7 @@ public final class Gui {
             Tray t = Tray.start(L.t("tray_show"), L.t("menu_exit"), this::raiseWindow, () -> System.exit(0));
             tray = t;
             if (t != null) t.setConnected(trayConnected);
+            else if (hidden) SwingUtilities.invokeLater(() -> frame.setVisible(true)); // سینی نیست -> پنجره را نشان بده
         }, "tray-start");
         tt.setDaemon(true);
         tt.start();

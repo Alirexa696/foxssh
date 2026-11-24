@@ -25,7 +25,7 @@ jar --create --file "$OUT/foxssh.jar" -C "$OUT/classes" .
 echo "== ساخت بسته"
 P="$OUT/pkg"
 install -d "$P/DEBIAN" "$P/usr/bin" "$P/usr/lib/foxssh/lib" "$P/usr/share/foxssh" \
-  "$P/usr/lib/systemd/system" "$P/usr/share/polkit-1/actions" "$P/usr/share/applications" \
+  "$P/usr/lib/systemd/system" "$P/usr/lib/systemd/user" "$P/usr/share/polkit-1/actions" "$P/usr/share/applications" \
   "$P/usr/share/icons/hicolor/256x256/apps" "$P/usr/share/icons/hicolor/48x48/apps"
 install -m 755 packaging/foxssh "$P/usr/bin/foxssh"
 install -m 644 "$OUT/foxssh.jar" "$P/usr/lib/foxssh/foxssh.jar"
@@ -35,6 +35,14 @@ install -m 755 packaging/foxssh-ctl packaging/foxssh-run packaging/foxssh-down "
 install -m 644 packaging/foxssh-tray.py "$P/usr/lib/foxssh/foxssh-tray.py"
 install -m 644 assets/iran_ipv4.txt "$P/usr/share/foxssh/iran_ipv4.txt"
 install -m 644 packaging/foxssh.service "$P/usr/lib/systemd/system/foxssh.service"
+install -m 644 packaging/foxssh-tray.service "$P/usr/lib/systemd/user/foxssh-tray.service"
+# آیکون‌های سینی در تم hicolor (نام بدون خط‌تیره)
+for n in 22 24 32 48 64; do
+  install -d "$P/usr/share/icons/hicolor/${n}x${n}/apps"
+  for s in off on; do
+    install -m 644 "assets/tray/foxssh_tray_${s}_${n}.png" "$P/usr/share/icons/hicolor/${n}x${n}/apps/foxssh_tray_${s}.png"
+  done
+done
 install -m 644 packaging/com.foxssh.policy "$P/usr/share/polkit-1/actions/com.foxssh.policy"
 install -m 644 packaging/foxssh.desktop "$P/usr/share/applications/foxssh.desktop"
 install -m 644 "$OUT/logo256.png" "$P/usr/share/icons/hicolor/256x256/apps/foxssh.png"
