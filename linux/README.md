@@ -43,3 +43,8 @@ Java (default-jre)، iproute2، polkit، systemd. برای DNS از systemd-reso
 ### پیش‌نمایش بدون X11 (فقط توسعه)
 `test/com/foxssh/desktop/Preview.java` رابط را بدون سرور گرافیکی روی PNG می‌کشد:
 `java -cp <classes> com.foxssh.desktop.Preview <outDir> 500 428 [en]`
+
+### آیکون نوار بالا (Ubuntu)
+هنگام باز بودن برنامه، لوگوی Fox VPN در نوار بالای سیستم دیده می‌شود؛ هنگام اتصال یک دایرهٔ سبز کنار لوگو می‌آید و هنگام قطع، لوگوی ساده است.
+از AppIndicator استفاده می‌شود (`packaging/foxssh-tray.py`؛ بسته‌های `python3-gi` و `gir1.2-ayatanaappindicator3-0.1` در Recommends هستند).
+اگر نصب نبودند، `SystemTray` خود جاوا امتحان می‌شود. کلیک روی آیکون: «باز کردن Fox VPN» / «خروج».

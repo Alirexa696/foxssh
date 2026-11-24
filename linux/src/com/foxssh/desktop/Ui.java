@@ -1014,7 +1014,7 @@ final class Ui {
                 g2.translate(14, (h - 24) / 2);
                 Icon.draw(g2, icon, SOFT, 24, 24);
                 g2.translate(-14, -(h - 24) / 2);
-            } else if (dot) {
+            } else if (dot && current) { // دایرهٔ سبز فقط کنار کانفیگ انتخاب‌شده
                 float d = 11f, x = 20, y = (h - d) / 2f;
                 g2.setColor(alpha(GREEN, 55));
                 g2.fill(new Ellipse2D.Float(x - 3, y - 3, d + 6, d + 6));

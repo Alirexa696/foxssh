@@ -19,6 +19,7 @@ final class L {
         a("reconnecting", "اتصال مجدد…", "Reconnecting…");
         a("your_ip", "آی‌پی شما", "Your IP");
         a("vpn_ip", "آی‌پی شما (VPN)", "Your IP (VPN)");
+        a("tray_show", "باز کردن Fox VPN", "Open Fox VPN");
         a("logs", "مشاهده لاگ‌ها", "View Logs");
         a("add_config", "افزودن کانفیگ", "Add a config");
         a("menu_configs", "کانفیگ‌ها", "Configs");

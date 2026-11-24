@@ -4,7 +4,7 @@ Section: net
 Priority: optional
 Architecture: @ARCH@
 Depends: default-jre | java11-runtime, iproute2, policykit-1 | polkitd, systemd
-Recommends: systemd-resolved | libnss-resolve
+Recommends: systemd-resolved | libnss-resolve, python3-gi, gir1.2-ayatanaappindicator3-0.1
 Maintainer: Fox SSH <noreply@example.com>
 Description: Fox SSH - system-wide SSH tunnel VPN client
  SSH tunnel (password auth) with tun2socks, badvpn-udpgw UDP support,

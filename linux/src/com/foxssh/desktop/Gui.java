@@ -90,6 +90,7 @@ public final class Gui {
     private JTextArea logArea;
     private JScrollPane logScroll;
     private boolean logOpen;
+    private Tray tray;
     private volatile boolean busy;
     private volatile String localError = "";
     private boolean bannerShown;
@@ -417,6 +418,26 @@ public final class Gui {
         SwingUtilities.invokeLater(() -> System.err.println("[fox] power=" + power.getBounds() + " showing=" + power.isShowing()
                 + " parent=" + power.getParent().getBounds()));
         poller.scheduleWithFixedDelay(this::poll, 0, 1, TimeUnit.SECONDS);
+        // آیکون نوار بالای سیستم (در پس‌زمینه بالا می‌آید تا باز شدن پنجره کند نشود)
+        Thread tt = new Thread(() -> {
+            Tray t = Tray.start(L.t("tray_show"), L.t("menu_exit"), this::raiseWindow, () -> System.exit(0));
+            tray = t;
+            if (t != null) t.setConnected(trayConnected);
+        }, "tray-start");
+        tt.setDaemon(true);
+        tt.start();
+    }
+
+    private volatile boolean trayConnected;
+
+    /** پنجره را از حالت کمینه/پشت سایر پنجره‌ها بیرون می‌آورد. */
+    private void raiseWindow() {
+        SwingUtilities.invokeLater(() -> {
+            frame.setVisible(true);
+            frame.setState(JFrame.NORMAL);
+            frame.toFront();
+            frame.requestFocus();
+        });
     }
 
     /** اندازه را برای «محتوا» تنظیم می‌کند (نه کل پنجره) تا عنوان‌بار پنجره جا را از دکمه‌ها نگیرد. */
@@ -698,6 +719,9 @@ public final class Gui {
         if (active && "connected".equals(state)) lastEngineError = "";
         boolean connected = active && "connected".equals(state);
         boolean working = busy || (active && !connected);
+        trayConnected = connected;
+        Tray tr = tray;
+        if (tr != null) tr.setConnected(connected);
 
         power.setState(connected ? Ui.PowerButton.ON : working ? Ui.PowerButton.BUSY : Ui.PowerButton.OFF);
         power.setEnabled(!busy);
