@@ -33,10 +33,10 @@ final class Ui {
             FIELD = new Color(0x1B2845), ACCENT = new Color(0x2D9CFF), TEXT = new Color(0xE8EEF9),
             MUTED = new Color(0x8895B3), OK = new Color(0x2ECC71), BAD = new Color(0xFF5C5C),
             DARK_BTN = new Color(0x22324F);
-    // پالت «نئون آبی» رابط اصلی
-    static final Color BG0 = new Color(0x050B1A), BG1 = new Color(0x0B1A3B), GLOW = new Color(0x2F7BFF),
-            CYAN = new Color(0x22B8FF), GREEN = new Color(0x2BE07A), PANEL_TOP = new Color(0x132350),
-            PANEL_BOT = new Color(0x0A1632), SOFT = new Color(0xA9B8D8);
+    // پالت «سرمه‌ای» رابط اصلی (آبی کم‌اشباع، لبه‌های فولادی)
+    static final Color BG0 = new Color(0x070D1C), BG1 = new Color(0x0F1B38), GLOW = new Color(0x4468A8),
+            CYAN = new Color(0x5B9BDB), GREEN = new Color(0x2BE07A), PANEL_TOP = new Color(0x182B55),
+            PANEL_BOT = new Color(0x0E1A38), SOFT = new Color(0xB4C0DA);
 
     static Color alpha(Color c, int a) {
         return new Color(c.getRed(), c.getGreen(), c.getBlue(), Math.max(0, Math.min(255, a)));
@@ -398,7 +398,7 @@ final class Ui {
             float cx = w / 2f, cy = h / 2f, R = Math.min(w, h) / 2f - 1;
             boolean on = state == ON, busy = state == BUSY;
             Color glow = on ? GREEN : GLOW;
-            Color bright = on ? new Color(0xA6FFCB) : busy ? CYAN : (hover ? new Color(0xA9CDFF) : new Color(0x7DB6FF));
+            Color bright = on ? new Color(0xA6FFCB) : busy ? CYAN : (hover ? new Color(0xB4CBEE) : new Color(0x8EB0E4));
             // هالهٔ بیرونی
             g2.setPaint(new RadialGradientPaint(cx, cy, R, new float[]{0f, 0.60f, 0.78f, 1f},
                     new Color[]{alpha(glow, 0), alpha(glow, on ? 90 : 60), alpha(glow, on ? 38 : 22), alpha(glow, 0)}));
@@ -414,22 +414,22 @@ final class Ui {
             g2.setStroke(new BasicStroke(7f));
             g2.draw(new Ellipse2D.Float(cx - r2, cy - r2, 2 * r2, 2 * r2));
             // بدنهٔ تیره
-            g2.setColor(on ? new Color(0x072A1E) : new Color(0x08142E));
+            g2.setColor(on ? new Color(0x072A1E) : new Color(0x0A1730));
             g2.fill(new Ellipse2D.Float(cx - r2, cy - r2, 2 * r2, 2 * r2));
             g2.setColor(bright);
             g2.setStroke(new BasicStroke(3f));
             g2.draw(new Ellipse2D.Float(cx - r2, cy - r2, 2 * r2, 2 * r2));
             // دیسک داخلی
             float r4 = R * 0.52f;
-            Color top = on ? new Color(0x45E890) : new Color(0x2B4F93);
-            Color bot = on ? new Color(0x118A48) : new Color(0x0F2149);
+            Color top = on ? new Color(0x45E890) : new Color(0x2F4D86);
+            Color bot = on ? new Color(0x118A48) : new Color(0x14264F);
             g2.setPaint(new GradientPaint(0, cy - r4, top, 0, cy + r4, bot));
             g2.fill(new Ellipse2D.Float(cx - r4, cy - r4, 2 * r4, 2 * r4));
             g2.setColor(new Color(255, 255, 255, on ? 70 : 38));
             g2.setStroke(new BasicStroke(1.4f));
             g2.draw(new Ellipse2D.Float(cx - r4, cy - r4, 2 * r4, 2 * r4));
             if (busy) {
-                g2.setColor(new Color(0x24365E));
+                g2.setColor(new Color(0x2A3D66));
                 g2.setStroke(new BasicStroke(4f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
                 g2.draw(new Ellipse2D.Float(cx - r2, cy - r2, 2 * r2, 2 * r2));
                 g2.setColor(CYAN);
@@ -487,7 +487,7 @@ final class Ui {
     /** کارت شیشه‌ای با لبهٔ درخشان. */
     static class GlowCard extends JPanel {
         private final int arc;
-        private Color edge = new Color(0x2F6FE0);
+        private Color edge = new Color(0x4C72B4);
 
         GlowCard(int arc) {
             this.arc = arc;
@@ -510,7 +510,7 @@ final class Ui {
 
     /** آیکون‌های خطی: سرور، مانیتور، سند. */
     static final class Icon extends JComponent {
-        static final int SERVER = 0, MONITOR = 1, DOC = 2;
+        static final int SERVER = 0, MONITOR = 1, DOC = 2, GEAR = 3, FOLDER = 4, INFO = 5, TUNNELS = 6, EXIT = 7;
         private final int kind;
         private final Color color;
 
@@ -546,6 +546,56 @@ final class Ui {
                     g2.draw(new RoundRectangle2D.Float(cx - bw / 2, y, bw, bh, 3, 3));
                     g2.fill(new Ellipse2D.Float(cx + bw / 2 - 5, y + bh / 2 - 0.9f, 1.8f, 1.8f));
                 }
+            } else if (kind == GEAR) {
+                g2.setStroke(new BasicStroke(1.9f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                g2.draw(new Ellipse2D.Float(cx - 5f, cy - 5f, 10f, 10f));
+                g2.draw(new Ellipse2D.Float(cx - 1.8f, cy - 1.8f, 3.6f, 3.6f));
+                g2.setStroke(new BasicStroke(2.6f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                for (int i = 0; i < 8; i++) {
+                    double a = i * Math.PI / 4;
+                    g2.draw(new Line2D.Double(cx + Math.cos(a) * 7.0, cy + Math.sin(a) * 7.0, cx + Math.cos(a) * 8.6, cy + Math.sin(a) * 8.6));
+                }
+            } else if (kind == FOLDER) {
+                g2.setStroke(new BasicStroke(1.9f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                float fw = 20, fh = 15, x = cx - fw / 2, y = cy - fh / 2 + 0.5f;
+                Path2D.Float p = new Path2D.Float();
+                p.moveTo(x + 2, y);
+                p.lineTo(x + 7, y);
+                p.lineTo(x + 9.5f, y + 2.5f);
+                p.lineTo(x + fw - 2, y + 2.5f);
+                p.quadTo(x + fw, y + 2.5f, x + fw, y + 4.5f);
+                p.lineTo(x + fw, y + fh - 2);
+                p.quadTo(x + fw, y + fh, x + fw - 2, y + fh);
+                p.lineTo(x + 2, y + fh);
+                p.quadTo(x, y + fh, x, y + fh - 2);
+                p.lineTo(x, y + 2);
+                p.quadTo(x, y, x + 2, y);
+                g2.draw(p);
+                g2.draw(new Line2D.Float(x + 0.5f, y + 6.5f, x + fw - 0.5f, y + 6.5f));
+            } else if (kind == INFO) {
+                g2.setStroke(new BasicStroke(1.9f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                g2.draw(new Ellipse2D.Float(cx - 8.5f, cy - 8.5f, 17f, 17f));
+                g2.fill(new Ellipse2D.Float(cx - 1.1f, cy - 4.8f, 2.2f, 2.2f));
+                g2.draw(new Line2D.Float(cx, cy - 1.2f, cx, cy + 4.8f));
+            } else if (kind == TUNNELS) {
+                g2.setStroke(new BasicStroke(1.9f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                g2.draw(new Line2D.Float(cx - 8, cy - 4, cx + 8, cy - 4));
+                g2.draw(new Line2D.Float(cx + 4, cy - 8, cx + 8, cy - 4));
+                g2.draw(new Line2D.Float(cx + 8, cy - 4, cx + 4, cy));
+                g2.draw(new Line2D.Float(cx + 8, cy + 4, cx - 8, cy + 4));
+                g2.draw(new Line2D.Float(cx - 4, cy, cx - 8, cy + 4));
+                g2.draw(new Line2D.Float(cx - 8, cy + 4, cx - 4, cy + 8));
+            } else if (kind == EXIT) {
+                g2.setStroke(new BasicStroke(1.9f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                Path2D.Float p = new Path2D.Float();
+                p.moveTo(cx - 1, cy - 8);
+                p.lineTo(cx - 7, cy - 8);
+                p.lineTo(cx - 7, cy + 8);
+                p.lineTo(cx - 1, cy + 8);
+                g2.draw(p);
+                g2.draw(new Line2D.Float(cx - 2, cy, cx + 8, cy));
+                g2.draw(new Line2D.Float(cx + 4, cy - 4, cx + 8, cy));
+                g2.draw(new Line2D.Float(cx + 8, cy, cx + 4, cy + 4));
             } else {
                 float dw = Math.min(w - 6, 19), dh = Math.min(h - 2, 24), x = cx - dw / 2, y = cy - dh / 2;
                 Path2D.Float p = new Path2D.Float();
@@ -597,7 +647,7 @@ final class Ui {
             Graphics2D g2 = (Graphics2D) g.create();
             antialias(g2);
             int w = getWidth(), h = getHeight();
-            glowPanel(g2, w, h, h, new Color(0x2F6FE0));
+            glowPanel(g2, w, h, h, new Color(0x4C72B4));
             g2.setFont(getFont());
             java.awt.FontMetrics fm = g2.getFontMetrics();
             int base = (h - fm.getHeight()) / 2 + fm.getAscent();
@@ -773,7 +823,7 @@ final class Ui {
             fill.lineTo(w, 0);
             fill.lineTo(0, 0);
             fill.closePath();
-            g2.setPaint(new GradientPaint(0, 0, new Color(0x0A1633), 0, h, new Color(0x0E2150)));
+            g2.setPaint(new GradientPaint(0, 0, new Color(0x0D1A38), 0, h, new Color(0x14264F)));
             g2.fill(fill);
             g2.setColor(alpha(CYAN, 26));
             g2.setStroke(new BasicStroke(7f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
@@ -782,7 +832,7 @@ final class Ui {
             g2.setStroke(new BasicStroke(4f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
             g2.draw(line);
             g2.setPaint(new LinearGradientPaint(0, 0, w, 0, new float[]{0f, 0.2f, 0.5f, 0.8f, 1f},
-                    new Color[]{alpha(GLOW, 90), new Color(0x3F8CFF), new Color(0x35C4FF), new Color(0x3F8CFF), alpha(GLOW, 90)}));
+                    new Color[]{alpha(GLOW, 90), new Color(0x5B84C4), new Color(0x6CA6E6), new Color(0x5B84C4), alpha(GLOW, 90)}));
             g2.setStroke(new BasicStroke(1.8f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
             g2.draw(line);
             g2.dispose();
@@ -842,11 +892,139 @@ final class Ui {
             g2.setColor(alpha(CYAN, 48));
             g2.setStroke(new BasicStroke(3.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
             g2.draw(vpn);
-            GradientPaint vpnPaint = new GradientPaint(0, top, new Color(0x5FDBFF), 0, base, new Color(0x1E6FFF));
+            GradientPaint vpnPaint = new GradientPaint(0, top, new Color(0x74BAF2), 0, base, new Color(0x2F6FD0));
             g2.setPaint(vpnPaint);
             g2.fill(vpn);
             g2.setStroke(new BasicStroke(WEIGHT, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 3f));
             g2.draw(vpn);
+            g2.dispose();
+        }
+    }
+
+    /** منوی بازشوی گرد با پس‌زمینهٔ سرمه‌ای و لبهٔ فولادی. */
+    static final class PopupMenu extends javax.swing.JPopupMenu {
+        PopupMenu() {
+            setOpaque(false);
+            setBorder(BorderFactory.createEmptyBorder(7, 7, 7, 7));
+            addPopupMenuListener(new javax.swing.event.PopupMenuListener() {
+                @Override public void popupMenuWillBecomeVisible(javax.swing.event.PopupMenuEvent e) {
+                    javax.swing.SwingUtilities.invokeLater(() -> roundWindow());
+                }
+                @Override public void popupMenuWillBecomeInvisible(javax.swing.event.PopupMenuEvent e) { }
+                @Override public void popupMenuCanceled(javax.swing.event.PopupMenuEvent e) { }
+            });
+        }
+
+        /** اگر منو پنجرهٔ مستقل است (بیرون از پنجرهٔ برنامه)، گوشه‌هایش را گرد می‌کند. */
+        private void roundWindow() {
+            try {
+                java.awt.Window w = javax.swing.SwingUtilities.getWindowAncestor(this);
+                java.awt.Component inv = getInvoker();
+                java.awt.Window own = inv == null ? null : javax.swing.SwingUtilities.getWindowAncestor(inv);
+                if (w != null && w != own) w.setShape(new RoundRectangle2D.Float(0, 0, w.getWidth(), w.getHeight(), 18, 18));
+            } catch (Exception ignored) {
+            }
+        }
+
+        @Override
+        public void addSeparator() {
+            add(new Sep());
+        }
+
+        @Override
+        public Dimension getPreferredSize() {
+            Dimension d = super.getPreferredSize();
+            return new Dimension(Math.max(d.width, 250), d.height);
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            antialias(g2);
+            int w = getWidth(), h = getHeight();
+            g2.setPaint(new GradientPaint(0, 0, new Color(0x16274F), 0, h, new Color(0x0E1A38)));
+            g2.fillRoundRect(0, 0, w, h, 18, 18);
+            g2.setColor(new Color(0x3A5A92));
+            g2.setStroke(new BasicStroke(1.4f));
+            g2.drawRoundRect(1, 1, w - 3, h - 3, 17, 17);
+            g2.dispose();
+        }
+    }
+
+    /** خط جداکنندهٔ منو. */
+    static final class Sep extends JComponent {
+        Sep() {
+            setOpaque(false);
+            setPreferredSize(new Dimension(10, 11));
+            setMaximumSize(new Dimension(Integer.MAX_VALUE, 11));
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            g.setColor(new Color(0x2E4573));
+            g.fillRect(4, getHeight() / 2, getWidth() - 8, 1);
+        }
+    }
+
+    /** ردیف منو: آیکون یا نقطهٔ سبز + متن؛ با هایلایت گرد هنگام عبور ماوس. */
+    static final class MenuRow extends javax.swing.JMenuItem {
+        private final int icon;
+        private final boolean dot, current;
+
+        /** icon = -1 بدون آیکون؛ dot = نقطهٔ سبز (لیست کانفیگ‌ها)؛ current = کانفیگ انتخاب‌شده. */
+        MenuRow(String text, int icon, boolean dot, boolean current) {
+            super(text);
+            this.icon = icon;
+            this.dot = dot;
+            this.current = current;
+            setOpaque(false);
+            setBorder(BorderFactory.createEmptyBorder());
+            setBorderPainted(false);
+            setFocusPainted(false);
+            setFont(pick(text, 15f, Font.PLAIN));
+            setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        }
+
+        private int textX() {
+            return icon >= 0 || dot ? 50 : 26;
+        }
+
+        @Override
+        public Dimension getPreferredSize() {
+            java.awt.FontMetrics fm = getFontMetrics(getFont());
+            return new Dimension(textX() + fm.stringWidth(getText()) + 30, 40);
+        }
+
+        @Override
+        public Dimension getMaximumSize() {
+            return new Dimension(Integer.MAX_VALUE, 40);
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            antialias(g2);
+            int w = getWidth(), h = getHeight();
+            boolean hot = getModel().isArmed() || getModel().isRollover();
+            if (hot || current) {
+                g2.setColor(new Color(130, 170, 235, hot ? 38 : 20));
+                g2.fillRoundRect(2, 2, w - 4, h - 4, 12, 12);
+            }
+            if (icon >= 0) {
+                g2.translate(14, (h - 24) / 2);
+                Icon.draw(g2, icon, SOFT, 24, 24);
+                g2.translate(-14, -(h - 24) / 2);
+            } else if (dot) {
+                float d = 11f, x = 20, y = (h - d) / 2f;
+                g2.setColor(alpha(GREEN, 55));
+                g2.fill(new Ellipse2D.Float(x - 3, y - 3, d + 6, d + 6));
+                g2.setColor(GREEN);
+                g2.fill(new Ellipse2D.Float(x, y, d, d));
+            }
+            g2.setFont(getFont());
+            java.awt.FontMetrics fm = g2.getFontMetrics();
+            g2.setColor(TEXT);
+            g2.drawString(getText(), textX(), (h - fm.getHeight()) / 2 + fm.getAscent());
             g2.dispose();
         }
     }

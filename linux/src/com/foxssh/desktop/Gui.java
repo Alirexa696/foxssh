@@ -171,7 +171,7 @@ public final class Gui {
         protected void paintComponent(java.awt.Graphics g) {
             java.awt.Graphics2D g2 = (java.awt.Graphics2D) g.create();
             Ui.antialias(g2);
-            g2.setPaint(new java.awt.GradientPaint(0, 0, new Color(0x0A1634), 0, getHeight(), new Color(0x050B1B)));
+            g2.setPaint(new java.awt.GradientPaint(0, 0, new Color(0x11213F), 0, getHeight(), new Color(0x09132A)));
             g2.fillRoundRect(0, 0, getWidth(), getHeight(), ARC, ARC);
             g2.dispose();
         }
@@ -189,7 +189,7 @@ public final class Gui {
             b.setColor(Ui.alpha(Ui.GLOW, 60));
             b.setStroke(new java.awt.BasicStroke(5f));
             b.draw(new java.awt.geom.RoundRectangle2D.Float(2.5f, 2.5f, w - 5, h - 5, ARC - 3, ARC - 3));
-            b.setPaint(new java.awt.GradientPaint(0, 0, new Color(0x3C93FF), 0, h, new Color(0x1F5FD0)));
+            b.setPaint(new java.awt.GradientPaint(0, 0, new Color(0x5B84C4), 0, h, new Color(0x34568F)));
             b.setStroke(new java.awt.BasicStroke(2f));
             b.draw(new java.awt.geom.RoundRectangle2D.Float(1, 1, w - 2, h - 2, ARC - 1, ARC - 1));
             b.dispose();
@@ -350,13 +350,13 @@ public final class Gui {
             @Override protected void paintComponent(java.awt.Graphics g) {
                 java.awt.Graphics2D g2 = (java.awt.Graphics2D) g.create();
                 Ui.antialias(g2);
-                g2.setPaint(new java.awt.GradientPaint(0, 0, new Color(0x0D1D45), 0, getHeight(), new Color(0x07122C)));
+                g2.setPaint(new java.awt.GradientPaint(0, 0, new Color(0x13244A), 0, getHeight(), new Color(0x0B1630)));
                 g2.fillRect(0, 0, getWidth(), getHeight());
                 g2.setColor(Ui.alpha(Ui.GLOW, 55));
                 g2.setStroke(new java.awt.BasicStroke(5f));
                 g2.drawLine(0, 1, getWidth(), 1);
                 g2.setPaint(new java.awt.LinearGradientPaint(0, 0, getWidth(), 0, new float[]{0f, 0.5f, 1f},
-                        new Color[]{new Color(0x2F7BFF), new Color(0x3FA8FF), new Color(0x2F7BFF)}));
+                        new Color[]{new Color(0x3E68B0), new Color(0x5B8AD0), new Color(0x3E68B0)}));
                 g2.setStroke(new java.awt.BasicStroke(1.8f));
                 g2.drawLine(0, 1, getWidth(), 1);
                 g2.dispose();
@@ -472,17 +472,28 @@ public final class Gui {
 
     // ───────────── منوها ─────────────
 
-    private void showMenu(JComponent anchor) {
-        JPopupMenu m = new JPopupMenu();
-        m.setBorder(BorderFactory.createLineBorder(LINE));
-        m.add(item(L.t("menu_configs"), () -> new ProfilesDialog(frame, store, this::reloadProfiles).setVisible(true)));
-        m.add(item(L.t("menu_tunnels"), this::openTunnels));
-        m.add(item(L.t("menu_settings"), this::openSettings));
-        m.add(item(logOpen ? L.t("menu_logs_close") : L.t("menu_logs"), this::toggleLog));
+    JPopupMenu buildMenu() {
+        Ui.PopupMenu m = new Ui.PopupMenu();
+        m.add(row(L.t("menu_configs"), Ui.Icon.DOC, () -> new ProfilesDialog(frame, store, this::reloadProfiles).setVisible(true)));
+        m.add(row(L.t("menu_tunnels"), Ui.Icon.TUNNELS, this::openTunnels));
+        m.add(row(L.t("menu_settings"), Ui.Icon.GEAR, this::openSettings));
+        m.add(row(logOpen ? L.t("menu_logs_close") : L.t("menu_logs"), Ui.Icon.FOLDER, this::toggleLog));
         m.addSeparator();
-        m.add(item(L.t("menu_about"), () -> JOptionPane.showMessageDialog(frame, L.t("about_text"), L.t("menu_about"), JOptionPane.PLAIN_MESSAGE)));
-        m.add(item(L.t("menu_exit"), () -> System.exit(0)));
-        m.show(anchor, 0, anchor.getHeight());
+        m.add(row(L.t("menu_about"), Ui.Icon.INFO, () -> JOptionPane.showMessageDialog(frame, L.t("about_text"), L.t("menu_about"), JOptionPane.PLAIN_MESSAGE)));
+        m.add(row(L.t("menu_exit"), Ui.Icon.EXIT, () -> System.exit(0)));
+        return m;
+    }
+
+    private void showMenu(JComponent anchor) {
+        JPopupMenu m = buildMenu();
+        int w = m.getPreferredSize().width;
+        m.show(anchor, anchor.getWidth() - w + 4, anchor.getHeight() + 2);
+    }
+
+    private static Ui.MenuRow row(String text, int icon, Runnable r) {
+        Ui.MenuRow i = new Ui.MenuRow(text, icon, false, false);
+        i.addActionListener(e -> r.run());
+        return i;
     }
 
     private void openTunnels() {
@@ -514,20 +525,30 @@ public final class Gui {
         return i;
     }
 
-    private void showProfileMenu(JComponent anchor) {
-        if (isActiveNow()) return;
-        JPopupMenu m = new JPopupMenu();
+    JPopupMenu buildProfileMenu() {
+        Ui.PopupMenu m = new Ui.PopupMenu();
         Store.Profile sel = store.selected();
         for (final Store.Profile p : store.profiles()) {
             boolean on = sel != null && sel.id.equals(p.id);
-            m.add(item((on ? "✓  " : "") + p.title() + "   (" + p.host + ")", () -> {
+            Ui.MenuRow r = new Ui.MenuRow(p.title() + " (" + p.host + ")", -1, true, on);
+            r.addActionListener(e -> {
                 store.setSelected(p.id);
                 reloadProfiles();
-            }));
+            });
+            m.add(r);
         }
         m.addSeparator();
-        m.add(item(L.t("manage_configs"), () -> new ProfilesDialog(frame, store, this::reloadProfiles).setVisible(true)));
-        m.show(anchor, 0, anchor.getHeight());
+        Ui.MenuRow manage = new Ui.MenuRow(L.t("manage_configs"), -1, false, false);
+        manage.addActionListener(e -> new ProfilesDialog(frame, store, this::reloadProfiles).setVisible(true));
+        m.add(manage);
+        return m;
+    }
+
+    private void showProfileMenu(JComponent anchor) {
+        if (isActiveNow()) return;
+        JPopupMenu m = buildProfileMenu();
+        int w = Math.max(m.getPreferredSize().width, 280);
+        m.show(anchor, (anchor.getWidth() - w) / 2, anchor.getHeight() + 4);
     }
 
     private void toggleLog() {
@@ -782,7 +803,7 @@ public final class Gui {
                 for (int x = 0; x < w; x++) {
                     int px = t.getRGB(x, y);
                     int al = (int) (((px >>> 24) & 0xFF) * 0.55f);
-                    t.setRGB(x, y, (al << 24) | 0x3C80FF);
+                    t.setRGB(x, y, (al << 24) | 0x5577B5);
                 }
             }
             baked = t;

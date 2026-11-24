@@ -28,6 +28,10 @@ public final class Preview {
                 Store.Profile p = new Store.Profile();
                 p.name = "FoxVPN-Tehran"; p.host = "vps.example.com"; p.port = 22; p.user = "u"; p.pass = "x";
                 st.saveProfile(p);
+                Store.Profile p2 = new Store.Profile();
+                p2.name = "amir"; p2.host = "amir.vps-son.ir"; p2.port = 22; p2.user = "u"; p2.pass = "x";
+                st.saveProfile(p2);
+                p.name = "sena"; p.host = "vps.se-mena.com"; st.saveProfile(p);
                 Gui g = new Gui();
                 JPanel root = g.buildMain();
                 Method rl = Gui.class.getDeclaredMethod("reloadProfiles"); rl.setAccessible(true);
@@ -40,6 +44,7 @@ public final class Preview {
                 s.setProperty("since", String.valueOf(System.currentTimeMillis() - 91000));
                 s.setProperty("tx", "463912"); s.setProperty("rx", "1992294"); s.setProperty("banner", "");
                 shot(root, w, h, out + "/on.png", g, rd, s);
+                menus(g, root, rd, s, w, h, out);
                 Properties c = new Properties(); c.setProperty("state", "connecting");
                 shot(root, w, h, out + "/busy.png", g, rd, c);
             } catch (Throwable t) { t.printStackTrace(); }
@@ -60,6 +65,39 @@ public final class Preview {
         root.paint(g2);
         g2.dispose();
         ImageIO.write(im, "png", new File(path));
+    }
+
+    /** منوها را روی تصویر پنجره (حالت متصل) می‌گذارد تا جایگاه و ظاهر با طرح مقایسه شود. */
+    static void menus(Gui g, JPanel root, Method rd, Properties st, int w, int h, String out) throws Exception {
+        rd.invoke(g, st);
+        root.setSize(new Dimension(w, h));
+        layout(root);
+        layout(root);
+        BufferedImage im = new BufferedImage(w + 60, h + 200, BufferedImage.TYPE_INT_RGB);
+        Graphics2D g2 = im.createGraphics();
+        g2.setColor(new java.awt.Color(0x6A7076));
+        g2.fillRect(0, 0, im.getWidth(), im.getHeight());
+        g2.translate(30, 0);
+        root.paint(g2);
+        javax.swing.JPopupMenu m = g.buildMenu();
+        Dimension d = m.getPreferredSize();
+        m.setSize(d);
+        layout(m);
+        Graphics2D a = (Graphics2D) g2.create();
+        a.translate(w - d.width + 4, 78);
+        m.paint(a);
+        a.dispose();
+        javax.swing.JPopupMenu pm = g.buildProfileMenu();
+        Dimension pd = pm.getPreferredSize();
+        pd = new Dimension(Math.max(pd.width, 280), pd.height);
+        pm.setSize(pd);
+        layout(pm);
+        Graphics2D b = (Graphics2D) g2.create();
+        b.translate(w / 2 - pd.width / 2, 354);
+        pm.paint(b);
+        b.dispose();
+        g2.dispose();
+        ImageIO.write(im, "png", new File(out + "/menus.png"));
     }
 
     static void layout(Component c) {
