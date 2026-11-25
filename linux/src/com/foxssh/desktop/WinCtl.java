@@ -185,9 +185,29 @@ final class WinCtl {
                 return;
             }
             // ۲) اتصال به خود سرور SSH از کارت اصلی (جلوگیری از حلقه)
-            run("route", "add", serverIp, "mask", "255.255.255.255", net[0], "metric", "1", "if", net[1]);
-            hostRouteIp = serverIp;
-            log("route: " + serverIp + " via " + net[0] + " (if " + net[1] + ")");
+            // مسیر واقعی فعلی به سرور را از خود ویندوز می‌پرسیم (قبل از ساخت تونل):
+            //   سرور در همان شبکهٔ محلی (on-link) → مسیر connected (/24 و ...) از 0/1 دقیق‌تر است و نیازی به مسیر اضافه نیست
+            //   سرور دور → مسیر /32 از طریق همان گیت‌وی/کارتی که ویندوز خودش انتخاب می‌کند
+            String best = ps("Find-NetRoute -RemoteIPAddress '" + serverIp + "' -ErrorAction SilentlyContinue"
+                    + " | Where-Object { $_.NextHop -ne $null } | Select-Object -First 1"
+                    + " | ForEach-Object { '{0} {1}' -f $_.NextHop, $_.InterfaceIndex }").trim();
+            String[] bp = best.split("\\s+");
+            String gw = net[0], ifx = net[1];
+            boolean onLink = false;
+            if (bp.length == 2 && bp[1].matches("\\d+")) {
+                if (bp[0].equals("0.0.0.0") || bp[0].equals("::")) onLink = true;
+                else if (bp[0].matches("\\d+\\.\\d+\\.\\d+\\.\\d+")) {
+                    gw = bp[0];
+                    ifx = bp[1];
+                }
+            }
+            if (onLink) {
+                log("route: " + serverIp + " on-link (if " + bp[1] + ") — no extra route needed");
+            } else {
+                String ro = run("route", "add", serverIp, "mask", "255.255.255.255", gw, "metric", "1", "if", ifx).trim();
+                hostRouteIp = serverIp;
+                log("route add " + serverIp + " via " + gw + " (if " + ifx + "): " + ro);
+            }
 
             // ۳) tun2socks با Wintun
             String yml = "tunnel:\n  name: " + ADAPTER + "\n  mtu: 1500\n  ipv4: 198.18.0.1\n"
