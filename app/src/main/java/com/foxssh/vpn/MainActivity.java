@@ -39,8 +39,6 @@ public final class MainActivity extends Activity implements VpnState.Listener {
     private final Map<String, Bitmap> flags = new HashMap<>();
     private int lastStatus = -1;
     private int ipGen;
-    private EditText user, pass;
-    private boolean passVisible;
     private AlertDialog bannerDialog;
 
     @Override
@@ -61,8 +59,6 @@ public final class MainActivity extends Activity implements VpnState.Listener {
         glow = findViewById(R.id.glow);
         profName = findViewById(R.id.profName);
         profSub = findViewById(R.id.profSub);
-        user = findViewById(R.id.user);
-        pass = findViewById(R.id.pass);
         findViewById(R.id.menuBtn).setOnClickListener(v -> {
             PopupMenu m = new PopupMenu(this, v);
             m.getMenu().add(0, 1, 0, R.string.menu_configs);
@@ -78,15 +74,7 @@ public final class MainActivity extends Activity implements VpnState.Listener {
             });
             m.show();
         });
-        findViewById(R.id.logsBar).setOnClickListener(v -> startActivity(new Intent(this, LogActivity.class)));
         findViewById(R.id.profileSelect).setOnClickListener(v -> chooseProfile());
-        findViewById(R.id.eye).setOnClickListener(v -> {
-            passVisible = !passVisible;
-            int sel = pass.getSelectionEnd();
-            pass.setInputType(InputType.TYPE_CLASS_TEXT
-                    | (passVisible ? InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD : InputType.TYPE_TEXT_VARIATION_PASSWORD));
-            pass.setSelection(Math.max(0, sel));
-        });
 
         power.setOnClickListener(v -> {
             if (VpnState.active()) {
@@ -128,15 +116,11 @@ public final class MainActivity extends Activity implements VpnState.Listener {
             profName.setText(R.string.no_profile_selected);
             profSub.setText(R.string.tap_to_add);
             proto.setText("SSH  |  22");
-            user.setText("");
-            pass.setText("");
             return;
         }
         profName.setText(p.title());
         profSub.setText(p.host + ":" + p.port);
         proto.setText("SSH  |  " + p.port);
-        user.setText(p.user);
-        pass.setText(p.pass);
     }
 
     private void chooseProfile() {
@@ -172,13 +156,11 @@ public final class MainActivity extends Activity implements VpnState.Listener {
             Toast.makeText(this, R.string.select_first, Toast.LENGTH_SHORT).show();
             return;
         }
-        cur.user = user.getText().toString().trim();
-        cur.pass = pass.getText().toString();
-        if (cur.user.isEmpty() || cur.pass.isEmpty()) {
+        if (cur.user == null || cur.user.isEmpty() || cur.pass == null || cur.pass.isEmpty()) {
             Toast.makeText(this, R.string.err_fields, Toast.LENGTH_SHORT).show();
+            startActivity(new Intent(this, ProfileEditActivity.class).putExtra("id", cur.id));
             return;
         }
-        prefs.saveProfile(cur);
         Intent i = VpnService.prepare(this);
         if (i != null) {
             startActivityForResult(i, REQ_VPN);
@@ -219,8 +201,6 @@ public final class MainActivity extends Activity implements VpnState.Listener {
         glow.setBackgroundResource(s == VpnState.CONNECTED ? R.drawable.glow_ok
                 : active ? R.drawable.glow_busy : R.drawable.glow_off);
         ipLabel.setText(s == VpnState.CONNECTED ? R.string.your_ip_vpn : R.string.your_ip);
-        user.setEnabled(!active);
-        pass.setEnabled(!active);
         if (s != lastStatus) {
             lastStatus = s;
             refreshIp(s);
